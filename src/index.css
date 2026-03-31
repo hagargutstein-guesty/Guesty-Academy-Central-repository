@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Lora:ital,wght@0,400..700;1,400..700&family=Space+Grotesk:wght@300..700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Lora", ui-serif, Georgia, serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+
+  --color-guesty-forest: #072C23;
+  --color-guesty-nature: #14665F;
+  --color-guesty-teal: #8CBEBE;
+  --color-guesty-ice: #BCE5E5;
+  --color-guesty-lemon: #EEFAD0;
+  
+  --color-guesty-night: #0E0740;
+  --color-guesty-ocean: #5071E6;
+  --color-guesty-powder: #9EBCFF;
+  --color-guesty-cloud: #EBF0FF;
+  
+  --color-guesty-merlot: #5F1632;
+  --color-guesty-coral: #FA877D;
+  --color-guesty-peach: #FFB4AD;
+  --color-guesty-blush: #FFE3E3;
+  
+  --color-guesty-black: #101010;
+  --color-guesty-beige: #E9E2D5;
+  --color-guesty-cream: #F7F5F2;
+}
+
+body {
+  background-color: var(--color-guesty-cream);
+  color: var(--color-guesty-black);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 0.7px solid rgba(255, 255, 255, 1);
+}
+
+.glass-panel-dark {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 0.7px solid rgba(255, 255, 255, 0.2);
+}
