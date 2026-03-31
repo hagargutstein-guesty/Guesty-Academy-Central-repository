@@ -7,7 +7,7 @@ import {
   ArrowRight, ArrowLeft, Globe, FileArchive, UploadCloud, Package,
   Play, Pause, SkipForward, SkipBack, MonitorPlay, ListChecks, Video, ArchiveRestore, History, ChevronDown, ExternalLink, ChevronLeft,
   Shield, UserCheck, UserCog, Filter, Download, MoreVertical, Activity, GitMerge, Eye, Trash2, Mail, Key, ShieldAlert, LockKeyhole, UserPlus, ListTree, Link, Briefcase,
-  Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle, Folder, FolderOpen
+  Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle
 } from 'lucide-react';
 
 // --- MOCK DATA ---
@@ -31,7 +31,7 @@ const adminStats = [
   { label: 'Avg. Completion Rate', value: '78%', trend: '+5%' },
 ];
 
-import { AssetUploader, UniversalPreviewer, EditAssetModal, FolderCascader } from './components/AssetManager';
+import { AssetUploader, UniversalPreviewer, EditAssetModal } from './components/AssetManager';
 
 const initialCourses = [
   { 
@@ -143,27 +143,11 @@ const initialCourses = [
   },
 ];
 
-export interface Folder {
-  id: string;
-  tenant_id: string;
-  parent_id: string | null;
-  name: string;
-  slug: string;
-}
-
-const initialFolders: Folder[] = [
-  { id: 'f1', tenant_id: 't1', parent_id: null, name: 'CEd', slug: 'ced' },
-  { id: 'f2', tenant_id: 't1', parent_id: null, name: 'Deprecated', slug: 'deprecated' },
-  { id: 'f3', tenant_id: 't1', parent_id: null, name: 'External', slug: 'external' },
-  { id: 'f4', tenant_id: 't1', parent_id: null, name: 'Internal', slug: 'internal' },
-  { id: 'f5', tenant_id: 't1', parent_id: null, name: 'Testing', slug: 'testing' },
-];
-
 const initialRepository = [
-  { id: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0', usedIn: 2, views: 1250, completionRate: '92%', status: 'Active', history: ['v2.0 (Mar 2026)', 'v1.0 (Oct 2025)'], uploadedBy: 'Admin User', uploadedAt: '2026-03-20', fileName: 'data_security_v2.mp4', tags: ['Security', 'Compliance'], folderId: 'f4_1' },
-  { id: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1', usedIn: 1, views: 840, completionRate: '78%', status: 'Active', history: ['v2.1 (Jan 2026)', 'v2.0 (Dec 2025)'], uploadedBy: 'John Doe', uploadedAt: '2026-01-15', fileName: 'python_fundamentals.zip', tags: ['Engineering', 'Python'], folderId: 'f4_2' },
-  { id: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0', usedIn: 3, views: 3200, completionRate: '100%', status: 'Active', history: ['v1.0 (Jan 2026)'], uploadedBy: 'HR Team', uploadedAt: '2026-01-05', fileName: 'handbook_2026.pdf', tags: ['HR', 'Onboarding'], folderId: 'f4_3' },
-  { id: 'a4', title: 'Old Compliance 2024', type: 'SCORM', version: 'v1.0', usedIn: 0, views: 4500, completionRate: '99%', status: 'Archived', history: ['v1.0 (Jan 2024)'], uploadedBy: 'Admin User', uploadedAt: '2024-01-10', fileName: 'compliance_2024.zip', tags: ['Compliance', 'Archived'], folderId: 'f2' },
+  { id: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0', usedIn: 2, views: 1250, completionRate: '92%', status: 'Active', history: ['v2.0 (Mar 2026)', 'v1.0 (Oct 2025)'], uploadedBy: 'Admin User', uploadedAt: '2026-03-20', fileName: 'data_security_v2.mp4', tags: ['Security', 'Compliance'] },
+  { id: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1', usedIn: 1, views: 840, completionRate: '78%', status: 'Active', history: ['v2.1 (Jan 2026)', 'v2.0 (Dec 2025)'], uploadedBy: 'John Doe', uploadedAt: '2026-01-15', fileName: 'python_fundamentals.zip', tags: ['Engineering', 'Python'] },
+  { id: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0', usedIn: 3, views: 3200, completionRate: '100%', status: 'Active', history: ['v1.0 (Jan 2026)'], uploadedBy: 'HR Team', uploadedAt: '2026-01-05', fileName: 'handbook_2026.pdf', tags: ['HR', 'Onboarding'] },
+  { id: 'a4', title: 'Old Compliance 2024', type: 'SCORM', version: 'v1.0', usedIn: 0, views: 4500, completionRate: '99%', status: 'Archived', history: ['v1.0 (Jan 2024)'], uploadedBy: 'Admin User', uploadedAt: '2024-01-10', fileName: 'compliance_2024.zip', tags: ['Compliance', 'Archived'] },
 ];
 
 interface RuleCondition {
@@ -389,9 +373,7 @@ export default function App() {
     status: 'Under Maintenance'
   });
   
-  const [folders, setFolders] = useState<Folder[]>(() => getInitialState('guesty_folders', initialFolders));
   const [repository, setRepository] = useState<any[]>(() => getInitialState('guesty_repository', initialRepository));
-  const [selectedRepositoryFolderId, setSelectedRepositoryFolderId] = useState<string | null>(null);
   const [repositorySearchQuery, setRepositorySearchQuery] = useState('');
   const [repositoryFilterType, setRepositoryFilterType] = useState('All');
   const [repositoryFilterVersion, setRepositoryFilterVersion] = useState('All');
@@ -408,12 +390,6 @@ export default function App() {
   const [previewAsset, setPreviewAsset] = useState<any>(null);
   const [showEditAssetModal, setShowEditAssetModal] = useState(false);
   const [assetToEdit, setAssetToEdit] = useState<any>(null);
-  const [showMoveModal, setShowMoveModal] = useState(false);
-  const [assetToMove, setAssetToMove] = useState<any>(null);
-  const [selectedMoveFolderId, setSelectedMoveFolderId] = useState<string | null>(null);
-  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
-  const [createFolderParentId, setCreateFolderParentId] = useState<string | null>(null);
-  const [newFolderName, setNewFolderName] = useState('');
   const [newAssetTitle, setNewAssetTitle] = useState('');
   const [newAssetType, setNewAssetType] = useState('SCORM');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -710,7 +686,6 @@ export default function App() {
   });
 
   const filteredRepository = repository.filter(item => {
-    const matchesFolder = !selectedRepositoryFolderId || item.folderId === selectedRepositoryFolderId;
     const matchesSearch = repositorySearchQuery === '' || 
       item.title.toLowerCase().includes(repositorySearchQuery.toLowerCase()) ||
       (item.tags && item.tags.some((tag: string) => tag.toLowerCase().includes(repositorySearchQuery.toLowerCase())));
@@ -719,86 +694,8 @@ export default function App() {
     const matchesVersion = repositoryFilterVersion === 'All' || item.version === repositoryFilterVersion;
     const matchesStatus = repositoryFilterStatus === 'All' || item.status === repositoryFilterStatus;
     
-    return matchesFolder && matchesSearch && matchesType && matchesVersion && matchesStatus;
+    return matchesSearch && matchesType && matchesVersion && matchesStatus;
   });
-
-  const getFolderPath = (folderId: string | null): string => {
-    if (!folderId) return 'Uncategorized';
-    const path: string[] = [];
-    let currentId: string | null = folderId;
-    while (currentId) {
-      const folder = folders.find(f => f.id === currentId);
-      if (folder) {
-        path.unshift(folder.name);
-        currentId = folder.parent_id;
-      } else {
-        break;
-      }
-    }
-    return path.join(' / ');
-  };
-
-  const getFolderBreadcrumbs = (folderId: string | null): Folder[] => {
-    if (!folderId) return [];
-    const path: Folder[] = [];
-    let currentId: string | null = folderId;
-    while (currentId) {
-      const folder = folders.find(f => f.id === currentId);
-      if (folder) {
-        path.unshift(folder);
-        currentId = folder.parent_id;
-      } else {
-        break;
-      }
-    }
-    return path;
-  };
-
-  const FolderTree = ({ parentId, level, selectedId, onSelect, showCreateButton = false }: { parentId: string | null, level: number, selectedId: string | null, onSelect: (id: string | null) => void, showCreateButton?: boolean }) => {
-    const children = folders.filter(f => f.parent_id === parentId);
-    if (children.length === 0) return null;
-
-    return (
-      <div className={`space-y-1 ${level > 0 ? 'ml-4 border-l border-guesty-beige/50 pl-2 mt-1' : ''}`}>
-        {children.map(folder => {
-          const isSelected = selectedId === folder.id;
-          const hasChildren = folders.some(f => f.parent_id === folder.id);
-          return (
-            <div key={folder.id}>
-              <div className={`group flex items-center justify-between px-3 py-2 rounded-[8px] text-sm transition-colors ${
-                  isSelected 
-                    ? 'bg-guesty-ocean/10 text-guesty-ocean font-bold' 
-                    : 'text-guesty-forest/70 hover:bg-guesty-cream/50 hover:text-guesty-black'
-                }`}>
-                <button
-                  onClick={() => onSelect(folder.id)}
-                  className="flex items-center gap-2 flex-1 text-left truncate"
-                >
-                  <Folder className={`w-4 h-4 shrink-0 ${isSelected ? 'text-guesty-ocean' : 'text-guesty-forest/40'}`} />
-                  <span className="truncate">{folder.name}</span>
-                </button>
-                {showCreateButton && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCreateFolderParentId(folder.id);
-                      setNewFolderName('');
-                      setShowCreateFolderModal(true);
-                    }}
-                    className="p-1 opacity-0 group-hover:opacity-100 hover:text-guesty-ocean hover:bg-guesty-ocean/20 rounded-md transition-all shrink-0"
-                    title="Create Subfolder"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-              <FolderTree parentId={folder.id} level={level + 1} selectedId={selectedId} onSelect={onSelect} showCreateButton={showCreateButton} />
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   const handleArchiveGroup = (groupId: string) => {
     const group = groups.find(g => g.id === groupId);
@@ -3150,109 +3047,66 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="flex gap-6">
-                {/* Sidebar */}
-                <div className="w-64 shrink-0 space-y-4">
-                  <div className="bg-white rounded-[24px] border border-guesty-beige shadow-sm p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-guesty-black">Folders</h3>
-                      <button 
-                        onClick={() => {
-                          setCreateFolderParentId(null);
-                          setNewFolderName('');
-                          setShowCreateFolderModal(true);
-                        }}
-                        className="p-1 text-guesty-forest/40 hover:text-guesty-ocean hover:bg-guesty-ocean/10 rounded-md transition-colors"
-                        title="Create Root Folder"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-1">
-                      <button 
-                        onClick={() => setSelectedRepositoryFolderId(null)}
-                        className={`w-full text-left px-3 py-2 rounded-[8px] text-sm font-bold flex items-center gap-2 transition-colors ${!selectedRepositoryFolderId ? 'bg-guesty-ocean/10 text-guesty-ocean' : 'text-guesty-forest/70 hover:bg-guesty-cream/50 hover:text-guesty-black'}`}
-                      >
-                        <Folder className={`w-4 h-4 ${!selectedRepositoryFolderId ? 'text-guesty-ocean' : 'text-guesty-forest/40'}`} /> All Materials
-                      </button>
-                      <FolderTree parentId={null} level={0} selectedId={selectedRepositoryFolderId} onSelect={setSelectedRepositoryFolderId} showCreateButton={true} />
-                    </div>
+              <div className="flex flex-col md:flex-row gap-4 mb-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-guesty-forest/40" />
+                  <input 
+                    type="text" 
+                    placeholder="Search training materials by name..." 
+                    value={repositorySearchQuery}
+                    onChange={(e) => setRepositorySearchQuery(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal focus:ring-1 focus:ring-guesty-teal transition-all bg-white"
+                  />
+                </div>
+                <div className="flex gap-4">
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
+                    <select 
+                      value={repositoryFilterType}
+                      onChange={(e) => setRepositoryFilterType(e.target.value)}
+                      className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
+                    >
+                      <option value="All">All Types</option>
+                      <option value="Video">Video</option>
+                      <option value="SCORM">SCORM</option>
+                      <option value="PDF">PDF</option>
+                      <option value="Assessment">Assessment</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
+                  </div>
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
+                    <select 
+                      value={repositoryFilterVersion}
+                      onChange={(e) => setRepositoryFilterVersion(e.target.value)}
+                      className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
+                    >
+                      <option value="All">All Versions</option>
+                      {Array.from(new Set(repository.map(item => item.version))).map(version => (
+                        <option key={version as string} value={version as string}>{version as string}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
+                  </div>
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
+                    <select 
+                      value={repositoryFilterStatus}
+                      onChange={(e) => setRepositoryFilterStatus(e.target.value)}
+                      className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Active">Active</option>
+                      <option value="Archived">Archived</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
                   </div>
                 </div>
+              </div>
 
-                {/* Main Content */}
-                <div className="flex-1 space-y-6">
-                  {/* Breadcrumb Header */}
-                  <div className="bg-white rounded-[16px] border border-guesty-beige shadow-sm px-6 py-4 flex items-center gap-2 text-sm font-bold text-guesty-forest/70">
-                    <button onClick={() => setSelectedRepositoryFolderId(null)} className="hover:text-guesty-black transition-colors">Central Repository</button>
-                    {selectedRepositoryFolderId && getFolderBreadcrumbs(selectedRepositoryFolderId).map((crumb) => (
-                      <React.Fragment key={crumb.id}>
-                        <ChevronRight className="w-4 h-4" />
-                        <button onClick={() => setSelectedRepositoryFolderId(crumb.id)} className="hover:text-guesty-black transition-colors">{crumb.name}</button>
-                      </React.Fragment>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-col md:flex-row gap-4 mb-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-guesty-forest/40" />
-                      <input 
-                        type="text" 
-                        placeholder="Search training materials by name..." 
-                        value={repositorySearchQuery}
-                        onChange={(e) => setRepositorySearchQuery(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal focus:ring-1 focus:ring-guesty-teal transition-all bg-white"
-                      />
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
-                        <select 
-                          value={repositoryFilterType}
-                          onChange={(e) => setRepositoryFilterType(e.target.value)}
-                          className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
-                        >
-                          <option value="All">All Types</option>
-                          <option value="Video">Video</option>
-                          <option value="SCORM">SCORM</option>
-                          <option value="PDF">PDF</option>
-                          <option value="Assessment">Assessment</option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
-                      </div>
-                      <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
-                        <select 
-                          value={repositoryFilterVersion}
-                          onChange={(e) => setRepositoryFilterVersion(e.target.value)}
-                          className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
-                        >
-                          <option value="All">All Versions</option>
-                          {Array.from(new Set(repository.map(item => item.version))).map(version => (
-                            <option key={version as string} value={version as string}>{version as string}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
-                      </div>
-                      <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
-                        <select 
-                          value={repositoryFilterStatus}
-                          onChange={(e) => setRepositoryFilterStatus(e.target.value)}
-                          className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
-                        >
-                          <option value="All">All Statuses</option>
-                          <option value="Active">Active</option>
-                          <option value="Archived">Archived</option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
+              <div className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-guesty-cream/50 text-xs font-bold text-guesty-forest/60 uppercase tracking-widest">
                         <th className="p-5 pl-8 font-bold">Material Name</th>
@@ -3271,13 +3125,7 @@ export default function App() {
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-3">
                                 <div className="text-guesty-forest/40">{getIconForType(item.type)}</div>
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-guesty-black">{item.title}</span>
-                                  <span className="text-xs text-guesty-forest/60 flex items-center gap-1 mt-0.5">
-                                    <Folder className="w-3 h-3" />
-                                    {getFolderPath(item.folderId)}
-                                  </span>
-                                </div>
+                                <span className="font-bold text-guesty-black">{item.title}</span>
                               </div>
                               {item.tags && item.tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1 ml-8">
@@ -3333,7 +3181,7 @@ export default function App() {
                             </button>
                           </td>
                           <td className="p-5 pr-8 text-right">
-                            <div className="flex justify-end gap-2 relative">
+                            <div className="flex justify-end gap-2">
                               <button 
                                 onClick={() => setPreviewAsset(item)}
                                 className="p-2 text-guesty-forest/60 hover:text-guesty-black hover:bg-guesty-beige rounded-[8px] transition-colors" 
@@ -3361,31 +3209,6 @@ export default function App() {
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                              <div className="relative">
-                                <button 
-                                  onClick={() => setOpenDropdownId(openDropdownId === item.id ? null : item.id)}
-                                  className={`p-2 rounded-[8px] transition-colors ${openDropdownId === item.id ? 'bg-guesty-beige text-guesty-black' : 'text-guesty-forest/60 hover:text-guesty-black hover:bg-guesty-beige'}`}
-                                  title="Actions"
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </button>
-                                
-                                {openDropdownId === item.id && (
-                                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-[12px] shadow-lg border border-guesty-beige py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-200">
-                                    <button 
-                                      onClick={() => {
-                                        setAssetToMove(item);
-                                        setSelectedMoveFolderId(item.folderId || null);
-                                        setShowMoveModal(true);
-                                        setOpenDropdownId(null);
-                                      }}
-                                      className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors"
-                                    >
-                                      <FolderOpen className="w-4 h-4" /> Move To
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
                             </div>
                           </td>
                         </tr>
@@ -3395,12 +3218,10 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* --- ADMIN COURSE PRODUCTION (REUSABILITY DEMO) --- */}
-      {environment === 'admin' && activeTab === 'courses' && (
+          {/* --- ADMIN COURSE PRODUCTION (REUSABILITY DEMO) --- */}
+          {environment === 'admin' && activeTab === 'courses' && (
             <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {previousModule && previousModule.tab === 'groups' && (
                 <button 
@@ -4276,7 +4097,7 @@ export default function App() {
                               <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-[8px] text-xs font-bold text-guesty-black shadow-sm uppercase tracking-widest">
                                 {course.category}
                               </div>
-                              {(environment as string) === 'admin' && (
+                              {environment === 'admin' && (
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -4320,7 +4141,7 @@ export default function App() {
                                         <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
                                           <Info className="w-4 h-4" /> View Details
                                         </button>
-                                        {(environment as string) === 'admin' && (
+                                        {environment === 'admin' && (
                                           <button onClick={() => { 
                                             setActiveTab('courses'); 
                                             setActiveCourseId(course.id); 
@@ -4383,7 +4204,7 @@ export default function App() {
                           <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-[8px] text-xs font-bold text-guesty-black shadow-sm uppercase tracking-widest">
                             {course.category}
                           </div>
-                          {(environment as string) === 'admin' && (
+                          {environment === 'admin' && (
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -4427,7 +4248,7 @@ export default function App() {
                                     <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
                                       <Info className="w-4 h-4" /> View Details
                                     </button>
-                                    {(environment as string) === 'admin' && (
+                                    {environment === 'admin' && (
                                       <button onClick={() => { 
                                         setActiveTab('courses'); 
                                         setActiveCourseId(course.id); 
@@ -4634,7 +4455,6 @@ export default function App() {
       <AssetUploader 
         isOpen={showUploadModal} 
         onClose={() => setShowUploadModal(false)} 
-        folders={folders}
         onUpload={(newAssetData) => {
           const newAsset = {
             id: `a${repository.length + 1}`,
@@ -4643,7 +4463,6 @@ export default function App() {
             version: 'v1.0',
             usedIn: 0,
             url: newAssetData.url,
-            folderId: newAssetData.folderId,
             uploadedBy: 'Current User',
             uploadedAt: new Date().toISOString().split('T')[0],
             fileName: newAssetData.file?.name || (newAssetData.type === 'HTML Link' ? newAssetData.url : 'Unknown'),
@@ -4651,7 +4470,7 @@ export default function App() {
             icon: newAssetData.type === 'Video' ? <FileVideo className="w-5 h-5" /> : 
                   newAssetData.type === 'PDF' ? <FileText className="w-5 h-5" /> : 
                   newAssetData.type === 'SCORM' || newAssetData.type === 'xAPI' ? <FileArchive className="w-5 h-5" /> :
-                  newAssetData.type === 'HTML Link' ? <Link className="w-5 h-5" /> :
+                  newAssetData.type === 'HTML Link' ? <LinkIcon className="w-5 h-5" /> :
                   newAssetData.type === 'Slides' ? <Layers className="w-5 h-5" /> :
                   <HelpCircle className="w-5 h-5" />
           };
@@ -4677,125 +4496,6 @@ export default function App() {
           setRepository(repository.map(r => r.id === updatedAsset.id ? updatedAsset : r));
         }}
       />
-
-      {/* Move Asset Modal */}
-      {showMoveModal && assetToMove && (
-        <div className="fixed inset-0 bg-guesty-forest/20 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-guesty-beige flex items-center justify-between bg-guesty-cream/30">
-              <h3 className="text-2xl font-bold text-guesty-black">Move Asset</h3>
-              <button onClick={() => setShowMoveModal(false)} className="p-2 text-guesty-forest/40 hover:text-guesty-black hover:bg-white rounded-full transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1 bg-guesty-cream/10">
-              <p className="text-sm text-guesty-forest/60 mb-4">Select a new destination folder for <strong>{assetToMove.title}</strong>.</p>
-              <div className="border border-guesty-beige rounded-[12px] overflow-hidden bg-white p-4 max-h-[400px] overflow-y-auto">
-                <div className="space-y-1">
-                  <button 
-                    onClick={() => setSelectedMoveFolderId(null)}
-                    className={`w-full text-left px-3 py-2 rounded-[8px] text-sm font-bold flex items-center gap-2 transition-colors ${!selectedMoveFolderId ? 'bg-guesty-ocean/10 text-guesty-ocean' : 'text-guesty-forest/70 hover:bg-guesty-cream/50 hover:text-guesty-black'}`}
-                  >
-                    <Folder className={`w-4 h-4 ${!selectedMoveFolderId ? 'text-guesty-ocean' : 'text-guesty-forest/40'}`} /> Uncategorized
-                  </button>
-                  <FolderTree parentId={null} level={0} selectedId={selectedMoveFolderId} onSelect={setSelectedMoveFolderId} />
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-guesty-beige bg-guesty-cream/30 flex justify-end gap-3">
-              <button 
-                onClick={() => setShowMoveModal(false)}
-                className="px-6 py-3 text-sm font-bold text-guesty-forest hover:bg-white rounded-[12px] transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  setRepository(repository.map(r => r.id === assetToMove.id ? { ...r, folderId: selectedMoveFolderId } : r));
-                  setShowMoveModal(false);
-                }}
-                disabled={selectedMoveFolderId === assetToMove.folderId}
-                className={`px-6 py-3 text-sm font-bold rounded-[12px] transition-colors shadow-sm ${
-                  selectedMoveFolderId === assetToMove.folderId
-                    ? 'bg-guesty-beige text-guesty-forest/40 cursor-not-allowed'
-                    : 'bg-guesty-nature text-white hover:bg-[#11554f]'
-                }`}
-              >
-                Move Asset
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Folder Modal */}
-      {showCreateFolderModal && (
-        <div className="fixed inset-0 bg-guesty-forest/20 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-guesty-beige flex items-center justify-between bg-guesty-cream/30">
-              <h3 className="text-2xl font-bold text-guesty-black">Create Folder</h3>
-              <button onClick={() => setShowCreateFolderModal(false)} className="p-2 text-guesty-forest/40 hover:text-guesty-black hover:bg-white rounded-full transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 bg-guesty-cream/10">
-              <label className="block text-sm font-bold text-guesty-forest mb-2">Folder Name</label>
-              <input
-                type="text"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="e.g., Onboarding Materials"
-                className="w-full px-4 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal focus:ring-1 focus:ring-guesty-teal transition-all bg-white"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newFolderName.trim()) {
-                    const newFolder: Folder = {
-                      id: `folder-${Date.now()}`,
-                      tenant_id: 'tenant-1',
-                      parent_id: createFolderParentId,
-                      name: newFolderName.trim(),
-                      slug: newFolderName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
-                    };
-                    setFolders([...folders, newFolder]);
-                    setShowCreateFolderModal(false);
-                  }
-                }}
-              />
-            </div>
-            <div className="p-6 border-t border-guesty-beige bg-guesty-cream/30 flex justify-end gap-3">
-              <button 
-                onClick={() => setShowCreateFolderModal(false)}
-                className="px-6 py-3 text-sm font-bold text-guesty-forest hover:bg-white rounded-[12px] transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  if (newFolderName.trim()) {
-                    const newFolder: Folder = {
-                      id: `folder-${Date.now()}`,
-                      tenant_id: 'tenant-1',
-                      parent_id: createFolderParentId,
-                      name: newFolderName.trim(),
-                      slug: newFolderName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
-                    };
-                    setFolders([...folders, newFolder]);
-                    setShowCreateFolderModal(false);
-                  }
-                }}
-                disabled={!newFolderName.trim()}
-                className={`px-6 py-3 text-sm font-bold rounded-[12px] transition-colors shadow-sm ${
-                  !newFolderName.trim()
-                    ? 'bg-guesty-beige text-guesty-forest/40 cursor-not-allowed'
-                    : 'bg-guesty-nature text-white hover:bg-[#11554f]'
-                }`}
-              >
-                Create Folder
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showDeleteModal && assetToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-guesty-night/40 backdrop-blur-sm animate-in fade-in duration-200">
@@ -6400,7 +6100,7 @@ export default function App() {
                   </label>
                 ))}
 
-                {(accessRuleType as string) === 'Department' && ['Engineering', 'Sales', 'Marketing', 'Customer Success', 'HR'].filter(d => d.toLowerCase().includes(accessRuleSearchQuery.toLowerCase())).map(dept => (
+                {accessRuleType === 'Department' && ['Engineering', 'Sales', 'Marketing', 'Customer Success', 'HR'].filter(d => d.toLowerCase().includes(accessRuleSearchQuery.toLowerCase())).map(dept => (
                   <label key={dept} className="flex items-center justify-between p-3 border border-guesty-beige rounded-[12px] cursor-pointer hover:bg-guesty-cream/50 transition-colors">
                     <div>
                       <span className="text-sm font-bold text-guesty-black">{dept}</span>

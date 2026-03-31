@@ -2,90 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   UploadCloud, X, FileVideo, FileText, FileArchive, Link as LinkIcon, 
-  Layers, HelpCircle, CheckCircle, AlertCircle, RefreshCw, Eye, Play,
-  Folder as FolderIcon, FolderOpen, ChevronRight
+  Layers, HelpCircle, CheckCircle, AlertCircle, RefreshCw, Eye, Play
 } from 'lucide-react';
-
-// --- FolderCascader Component ---
-export function FolderCascader({ folders, selectedFolderId, onChange }: { folders: any[], selectedFolderId: string | null, onChange: (id: string) => void }) {
-  const [activePath, setActivePath] = useState<string[]>([]);
-
-  // Initialize active path if a folder is pre-selected
-  useEffect(() => {
-    if (selectedFolderId && activePath.length === 0) {
-      const path = [];
-      let currentId = selectedFolderId;
-      while (currentId) {
-        path.unshift(currentId);
-        const folder = folders.find(f => f.id === currentId);
-        currentId = folder?.parent_id || null;
-      }
-      setActivePath(path);
-    }
-  }, [selectedFolderId, folders]);
-
-  const topLevelFolders = folders.filter(f => !f.parent_id);
-  const getChildren = (parentId: string) => folders.filter(f => f.parent_id === parentId);
-
-  const handleFolderClick = (folder: any, level: number) => {
-    const newPath = activePath.slice(0, level);
-    newPath.push(folder.id);
-    setActivePath(newPath);
-    onChange(folder.id);
-  };
-
-  const renderColumn = (columnFolders: any[], level: number) => {
-    if (columnFolders.length === 0) return null;
-    return (
-      <div key={level} className="w-48 border-r border-gray-200 overflow-y-auto bg-white shrink-0">
-        {columnFolders.map(folder => {
-          const hasChildren = getChildren(folder.id).length > 0;
-          const isActive = activePath[level] === folder.id;
-          const isSelected = selectedFolderId === folder.id;
-          
-          return (
-            <div 
-              key={folder.id}
-              onClick={() => handleFolderClick(folder, level)}
-              className={`px-3 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors
-                ${isSelected ? 'bg-[#2D5A56] text-white' : isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'}`}
-            >
-              <div className="flex items-center gap-2 overflow-hidden">
-                {isSelected || isActive ? <FolderOpen className="w-4 h-4 shrink-0" /> : <FolderIcon className="w-4 h-4 shrink-0" />}
-                <span className="truncate">{folder.name}</span>
-              </div>
-              {hasChildren && <ChevronRight className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white/70' : 'text-gray-400'}`} />}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const columns = [renderColumn(topLevelFolders, 0)];
-  activePath.forEach((folderId, index) => {
-    const children = getChildren(folderId);
-    if (children.length > 0) {
-      columns.push(renderColumn(children, index + 1));
-    }
-  });
-
-  return (
-    <div className="border border-gray-200 rounded-[8px] overflow-hidden flex h-48 bg-gray-50">
-      {columns}
-    </div>
-  );
-}
 
 // --- AssetUploader Component ---
 
-export function AssetUploader({ isOpen, onClose, onUpload, folders = [] }: { isOpen: boolean, onClose: () => void, onUpload: (asset: any) => void, folders?: any[] }) {
+export function AssetUploader({ isOpen, onClose, onUpload }: { isOpen: boolean, onClose: () => void, onUpload: (asset: any) => void }) {
   const [assetTitle, setAssetTitle] = useState('');
   const [assetType, setAssetType] = useState('SCORM');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadUrl, setUploadUrl] = useState('');
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [error, setError] = useState('');
   
   // Upload State
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
@@ -100,8 +26,6 @@ export function AssetUploader({ isOpen, onClose, onUpload, folders = [] }: { isO
       setAssetType('SCORM');
       setUploadFile(null);
       setUploadUrl('');
-      setSelectedFolderId(null);
-      setError('');
       setUploadStatus('idle');
       setProgress(0);
     }
@@ -133,7 +57,6 @@ export function AssetUploader({ isOpen, onClose, onUpload, folders = [] }: { isO
             title: assetTitle,
             type: assetType,
             file: uploadFile,
-            folderId: selectedFolderId,
             url: uploadUrl || (uploadFile ? URL.createObjectURL(uploadFile) : ''),
           });
           onClose();
@@ -159,15 +82,7 @@ export function AssetUploader({ isOpen, onClose, onUpload, folders = [] }: { isO
   };
 
   const handleUploadClick = () => {
-    setError('');
-    
-    if (!selectedFolderId) {
-      setError('Target folder is required to save asset.');
-      return;
-    }
-    
     if (!assetTitle || (assetType !== 'HTML Link' && !uploadFile) || (assetType === 'HTML Link' && !uploadUrl)) {
-      setError('Please fill in all required fields.');
       return;
     }
     
@@ -177,7 +92,6 @@ export function AssetUploader({ isOpen, onClose, onUpload, folders = [] }: { isO
         title: assetTitle,
         type: assetType,
         url: uploadUrl,
-        folderId: selectedFolderId,
       });
       onClose();
     } else {
@@ -227,15 +141,6 @@ export function AssetUploader({ isOpen, onClose, onUpload, folders = [] }: { isO
                 <option value="Video">Video</option>
                 <option value="HTML Link">HTML Link</option>
               </select>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Destination Folder <span className="text-red-500">*</span></label>
-              <FolderCascader 
-                folders={folders} 
-                selectedFolderId={selectedFolderId} 
-                onChange={setSelectedFolderId} 
-              />
             </div>
 
             {assetType === 'HTML Link' ? (
@@ -293,13 +198,6 @@ export function AssetUploader({ isOpen, onClose, onUpload, folders = [] }: { isO
               </div>
             )}
           </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-[8px] flex items-start gap-2 text-red-700 text-sm">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
 
           {/* Upload Progress UI */}
           <AnimatePresence>

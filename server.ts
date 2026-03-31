@@ -1,214 +1,128 @@
 import express from "express";
-import cors from "cors";
-import { PrismaClient } from "@prisma/client";
 import { createServer as createViteServer } from "vite";
+import multer from "multer";
+import AdmZip from "adm-zip";
+import { XMLParser } from "fast-xml-parser";
+import fs from "fs";
 import path from "path";
 
-const prisma = new PrismaClient();
 const app = express();
 const PORT = 3000;
 
-app.use(cors());
-app.use(express.json());
+// Configure multer for memory storage
+const upload = multer({ storage: multer.memoryStorage() });
 
-// API Routes
-
-// 1. Initialize Tenant Folders
-app.post("/api/tenants/:tenantId/initialize", async (req, res) => {
-  const { tenantId } = req.params;
+app.post("/api/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
 
   try {
-    // Check if tenant exists, if not create one
-    let tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) {
-      tenant = await prisma.tenant.create({
-        data: { id: tenantId, name: "New Tenant" },
+    const zip = new AdmZip(req.file.buffer);
+    const zipEntries = zip.getEntries();
+
+    let manifestEntry = null;
+    let tincanEntry = null;
+
+    for (const entry of zipEntries) {
+      if (entry.entryName.toLowerCase() === "imsmanifest.xml") {
+        manifestEntry = entry;
+      } else if (entry.entryName.toLowerCase() === "tincan.xml") {
+        tincanEntry = entry;
+      }
+    }
+
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: "@_",
+    });
+
+    if (manifestEntry) {
+      // SCORM
+      const xmlData = manifestEntry.getData().toString("utf8");
+      const jsonObj = parser.parse(xmlData);
+
+      let entryPoint = null;
+      let title = "Unknown SCORM Course";
+
+      try {
+        const manifest = jsonObj.manifest;
+        if (manifest.organizations && manifest.organizations.organization) {
+          const org = Array.isArray(manifest.organizations.organization)
+            ? manifest.organizations.organization[0]
+            : manifest.organizations.organization;
+          title = org.title || title;
+        }
+
+        if (manifest.resources && manifest.resources.resource) {
+          const resources = Array.isArray(manifest.resources.resource)
+            ? manifest.resources.resource
+            : [manifest.resources.resource];
+          
+          // Find the first resource with an href, usually the entry point
+          for (const res of resources) {
+            if (res["@_href"]) {
+              entryPoint = res["@_href"];
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing SCORM manifest:", e);
+      }
+
+      return res.json({
+        type: "SCORM",
+        title,
+        entryPoint,
+        message: "SCORM package processed successfully",
+      });
+    } else if (tincanEntry) {
+      // xAPI
+      const xmlData = tincanEntry.getData().toString("utf8");
+      const jsonObj = parser.parse(xmlData);
+
+      let entryPoint = null;
+      let title = "Unknown xAPI Course";
+
+      try {
+        const tincan = jsonObj.tincan;
+        if (tincan.activities && tincan.activities.activity) {
+          const activity = Array.isArray(tincan.activities.activity)
+            ? tincan.activities.activity[0]
+            : tincan.activities.activity;
+          
+          if (activity.name) {
+            title = activity.name["#text"] || activity.name;
+          }
+          
+          if (activity.launch) {
+            entryPoint = activity.launch;
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing xAPI tincan.xml:", e);
+      }
+
+      return res.json({
+        type: "xAPI",
+        title,
+        entryPoint,
+        message: "xAPI package processed successfully",
+      });
+    } else {
+      return res.status(400).json({
+        error: "Invalid package: Neither imsmanifest.xml nor tincan.xml found in the root of the zip file.",
       });
     }
-
-    // Check if folders already initialized
-    const existingFolders = await prisma.folder.findFirst({
-      where: { tenantId, isSystemFolder: true },
-    });
-
-    if (existingFolders) {
-      return res.status(400).json({ error: "Folders already initialized for this tenant" });
-    }
-
-    // Fixed Root Taxonomy
-    const rootFolders = ["CEd", "Archived", "External - Partners", "Internal", "Testing"];
-    const createdRoots = await Promise.all(
-      rootFolders.map((name) =>
-        prisma.folder.create({
-          data: { name, tenantId, isSystemFolder: true },
-        })
-      )
-    );
-
-    const internalFolder = createdRoots.find((f) => f.name === "Internal");
-
-    if (internalFolder) {
-      // Mandatory Sub-Folders for Internal
-      const internalSubFolders = [
-        "Basic Product Training",
-        "Departments/Teams",
-        "Guesty Onboarding",
-        "Product Education",
-        "System and processes",
-      ];
-
-      await Promise.all(
-        internalSubFolders.map((name) =>
-          prisma.folder.create({
-            data: {
-              name,
-              tenantId,
-              parentId: internalFolder.id,
-              isSystemFolder: true,
-            },
-          })
-        )
-      );
-    }
-
-    res.json({ message: "Tenant folders initialized successfully" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to initialize folders" });
+    console.error("Error processing zip file:", error);
+    return res.status(500).json({ error: "Failed to process the zip file." });
   }
 });
 
-// 2. Get all folders for a tenant
-app.get("/api/tenants/:tenantId/folders", async (req, res) => {
-  const { tenantId } = req.params;
-  try {
-    const folders = await prisma.folder.findMany({
-      where: { tenantId },
-      include: { children: true },
-    });
-    res.json(folders);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to fetch folders" });
-  }
-});
-
-// 3. Create a custom folder
-app.post("/api/tenants/:tenantId/folders", async (req, res) => {
-  const { tenantId } = req.params;
-  const { name, parentId } = req.body;
-
-  try {
-    const folder = await prisma.folder.create({
-      data: {
-        name,
-        tenantId,
-        parentId,
-        isSystemFolder: false,
-      },
-    });
-    res.json(folder);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to create folder" });
-  }
-});
-
-// 4. Delete a custom folder
-app.delete("/api/tenants/:tenantId/folders/:folderId", async (req, res) => {
-  const { tenantId, folderId } = req.params;
-
-  try {
-    const folder = await prisma.folder.findUnique({
-      where: { id: folderId, tenantId },
-    });
-
-    if (!folder) {
-      return res.status(404).json({ error: "Folder not found" });
-    }
-
-    if (folder.isSystemFolder) {
-      return res.status(403).json({ error: "Cannot delete system folders" });
-    }
-
-    // Delete assets in folder (or move them, but for simplicity we delete)
-    await prisma.asset.deleteMany({
-      where: { folderId, tenantId },
-    });
-
-    await prisma.folder.delete({
-      where: { id: folderId, tenantId },
-    });
-
-    res.json({ message: "Folder deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to delete folder" });
-  }
-});
-
-// 5. Upload Asset
-app.post("/api/tenants/:tenantId/assets", async (req, res) => {
-  const { tenantId } = req.params;
-  const { name, folderId, url } = req.body;
-
-  if (!folderId) {
-    return res.status(400).json({ error: "Folder destination is required" });
-  }
-
-  try {
-    const asset = await prisma.asset.create({
-      data: {
-        name,
-        folderId,
-        tenantId,
-        url,
-      },
-    });
-    res.json(asset);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to upload asset" });
-  }
-});
-
-// 5. Get Assets for a folder
-app.get("/api/tenants/:tenantId/folders/:folderId/assets", async (req, res) => {
-  const { tenantId, folderId } = req.params;
-  try {
-    const assets = await prisma.asset.findMany({
-      where: { tenantId, folderId },
-    });
-    res.json(assets);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to fetch assets" });
-  }
-});
-
-// 6. Move Asset
-app.put("/api/tenants/:tenantId/assets/:assetId/move", async (req, res) => {
-  const { tenantId, assetId } = req.params;
-  const { newFolderId } = req.body;
-
-  if (!newFolderId) {
-    return res.status(400).json({ error: "New folder destination is required" });
-  }
-
-  try {
-    const asset = await prisma.asset.update({
-      where: { id: assetId, tenantId },
-      data: { folderId: newFolderId },
-    });
-    res.json(asset);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to move asset" });
-  }
-});
-
-// Vite middleware for development
 async function startServer() {
+  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

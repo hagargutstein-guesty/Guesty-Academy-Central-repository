@@ -6,35 +6,13 @@ datasource db {
   provider = "sqlite"
 }
 
-model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  folders   Folder[]
-  assets    Asset[]
-}
-
-model Folder {
-  id               String   @id @default(uuid())
-  name             String
-  parentId         String?
-  parent           Folder?  @relation("FolderToFolder", fields: [parentId], references: [id])
-  children         Folder[] @relation("FolderToFolder")
-  isSystemFolder   Boolean  @default(false)
-  tenantId         String
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  assets           Asset[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-}
-
 model Asset {
-  id        String   @id @default(uuid())
-  name      String
-  url       String?
-  folderId  String
-  folder    Folder   @relation(fields: [folderId], references: [id])
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  tenant_id  String
+  title      String
+  type       String   // SCORM, XAPI, PDF, SLIDES, LINK
+  url        String
+  metadata   String   // JSON string
+  status     String   // UPLOADING, PROCESSING, READY, ERROR
+  created_at DateTime @default(now())
 }
