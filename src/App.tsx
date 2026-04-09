@@ -9,6 +9,9 @@ import {
   Shield, UserCheck, UserCog, Filter, Download, MoreVertical, Activity, GitMerge, Eye, Trash2, Mail, Key, ShieldAlert, LockKeyhole, UserPlus, ListTree, Link, Briefcase,
   Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle
 } from 'lucide-react';
+import { RepositoryDashboard } from './components/RepositoryDashboard';
+import { FileItem, Folder } from './types';
+import { ROOT_FOLDERS } from './constants';
 
 // --- MOCK DATA ---
 const learningPath = [
@@ -31,8 +34,6 @@ const adminStats = [
   { label: 'Avg. Completion Rate', value: '78%', trend: '+5%' },
 ];
 
-import { AssetUploader, UniversalPreviewer, EditAssetModal } from './components/AssetManager';
-
 const initialCourses = [
   { 
     id: 'c1', title: 'Company Onboarding 2026', audience: 'Internal (Data)', status: 'Under Maintenance', lastUpdated: 'Just now', enrolledGroups: ['New Hires Q1', 'Data Team'], enrolledSites: ['Guesty Internal'], 
@@ -53,8 +54,8 @@ const initialCourses = [
     enrollmentRequested: false,
     modules: [
       { id: 'm1', title: 'Welcome to Guesty', type: 'Video', version: 'v1.0' },
-      { id: 'a1', title: 'Data Security Basics', type: 'SCORM', version: 'v1.0' },
-      { id: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
+      { id: 'a1', assetId: 'a1', title: 'Data Security Basics', type: 'SCORM', version: 'v1.0' },
+      { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
       { id: 'm2', title: 'Advanced Data Models', type: 'Video', version: 'v1.0' },
       { id: 'm3', title: 'IT Setup Checklist', type: 'Checklist', version: 'v1.0' },
       { id: 'm4', title: 'Live Q&A Session', type: 'ILT', version: 'v1.0' },
@@ -79,7 +80,7 @@ const initialCourses = [
     enrollmentRequested: false,
     modules: [
       { id: 'm5', title: 'Dimensional Modeling Deep Dive', type: 'SCORM', version: 'v1.0' },
-      { id: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1' },
+      { id: 'a2', assetId: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1' },
       { id: 'm6', title: 'Query Optimization Techniques', type: 'Video', version: 'v1.0' },
       { id: 'm7', title: 'Data Warehouse Design Patterns', type: 'SCORM', version: 'v1.0' },
     ] 
@@ -116,8 +117,8 @@ const initialCourses = [
     enrollmentRequested: false,
     modules: [
       { id: 'm11', title: 'Code of Conduct Review', type: 'SCORM', version: 'v1.0' },
-      { id: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0' },
-      { id: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
+      { id: 'a1', assetId: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0' },
+      { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
       { id: 'm12', title: 'Data Privacy and GDPR', type: 'Video', version: 'v1.0' },
       { id: 'm13', title: 'Workplace Safety Guidelines', type: 'SCORM', version: 'v1.0' },
       { id: 'm14', title: 'Final Assessment', type: 'Assessment', version: 'v1.0' },
@@ -137,17 +138,25 @@ const initialCourses = [
     enrollmentRequested: false,
     modules: [
       { id: 'm15', title: 'Communication Strategies', type: 'Video', version: 'v1.0' },
-      { id: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
+      { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
       { id: 'm16', title: 'Handling Difficult Conversations', type: 'SCORM', version: 'v1.0' },
     ] 
   },
 ];
 
+const initialFolders: Folder[] = [
+  { id: 'f1', name: 'Internal training', parentId: null, rootType: 'internal', createdAt: new Date().toISOString(), isSystemFolder: true },
+  { id: 'f2', name: 'Customer training', parentId: null, rootType: 'customer', createdAt: new Date().toISOString(), isSystemFolder: true },
+  { id: 'f3', name: 'Archived training', parentId: null, rootType: 'archived', createdAt: new Date().toISOString(), isSystemFolder: true },
+];
+
 const initialRepository = [
-  { id: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0', usedIn: 2, views: 1250, completionRate: '92%', status: 'Active', history: ['v2.0 (Mar 2026)', 'v1.0 (Oct 2025)'], uploadedBy: 'Admin User', uploadedAt: '2026-03-20', fileName: 'data_security_v2.mp4', tags: ['Security', 'Compliance'] },
-  { id: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1', usedIn: 1, views: 840, completionRate: '78%', status: 'Active', history: ['v2.1 (Jan 2026)', 'v2.0 (Dec 2025)'], uploadedBy: 'John Doe', uploadedAt: '2026-01-15', fileName: 'python_fundamentals.zip', tags: ['Engineering', 'Python'] },
-  { id: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0', usedIn: 3, views: 3200, completionRate: '100%', status: 'Active', history: ['v1.0 (Jan 2026)'], uploadedBy: 'HR Team', uploadedAt: '2026-01-05', fileName: 'handbook_2026.pdf', tags: ['HR', 'Onboarding'] },
-  { id: 'a4', title: 'Old Compliance 2024', type: 'SCORM', version: 'v1.0', usedIn: 0, views: 4500, completionRate: '99%', status: 'Archived', history: ['v1.0 (Jan 2024)'], uploadedBy: 'Admin User', uploadedAt: '2024-01-10', fileName: 'compliance_2024.zip', tags: ['Compliance', 'Archived'] },
+  { id: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0', usedIn: 2, views: 1250, completionRate: '92%', status: 'Active', history: [{ version: 'v2.0', date: 'Mar 2026', size: '12.4 MB' }, { version: 'v1.0', date: 'Oct 2025', size: '10.2 MB' }], folderId: 'f1', url: 'https://www.w3schools.com/html/mov_bbb.mp4', createdAt: '2026-03-15' },
+  { id: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1', usedIn: 1, views: 840, completionRate: '78%', status: 'Active', history: [{ version: 'v2.1', date: 'Jan 2026', size: '8.1 MB' }, { version: 'v2.0', date: 'Dec 2025', size: '7.8 MB' }], folderId: 'f1', url: 'https://example.com/scorm-mock', createdAt: '2026-01-20' },
+  { id: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0', usedIn: 3, views: 3200, completionRate: '100%', status: 'Active', history: [{ version: 'v1.0', date: 'Jan 2026', size: '2.4 MB' }], folderId: 'f1', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', createdAt: '2026-01-05' },
+  { id: 'a4', title: 'Old Compliance 2024', type: 'SCORM', version: 'v1.0', usedIn: 0, views: 4500, completionRate: '99%', status: 'Archived', history: [{ version: 'v1.0', date: 'Jan 2024', size: '5.6 MB' }], folderId: 'f3', url: 'https://example.com/scorm-mock-old', createdAt: '2024-01-10' },
+  { id: 'a5', title: 'Customer Success Playbook', type: 'PDF', version: 'v1.2', usedIn: 5, views: 1500, completionRate: '85%', status: 'Active', folderId: 'f2', createdAt: '2025-11-12' },
+  { id: 'a6', title: 'Advanced React Patterns', type: 'Video', version: 'v1.0', usedIn: 1, views: 450, completionRate: '60%', status: 'Active', folderId: 'f1', createdAt: '2026-02-28' },
 ];
 
 interface RuleCondition {
@@ -373,7 +382,8 @@ export default function App() {
     status: 'Under Maintenance'
   });
   
-  const [repository, setRepository] = useState<any[]>(() => getInitialState('guesty_repository', initialRepository));
+  const [repository, setRepository] = useState<FileItem[]>(() => getInitialState('guesty_repository', initialRepository));
+  const [folders, setFolders] = useState<Folder[]>(() => getInitialState('guesty_folders', initialFolders));
   const [repositorySearchQuery, setRepositorySearchQuery] = useState('');
   const [repositoryFilterType, setRepositoryFilterType] = useState('All');
   const [repositoryFilterVersion, setRepositoryFilterVersion] = useState('All');
@@ -387,10 +397,8 @@ export default function App() {
   const [selectedLinkedAsset, setSelectedLinkedAsset] = useState<any>(null);
   const [versionPushStrategy, setVersionPushStrategy] = useState('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [previewAsset, setPreviewAsset] = useState<any>(null);
-  const [showEditAssetModal, setShowEditAssetModal] = useState(false);
-  const [assetToEdit, setAssetToEdit] = useState<any>(null);
   const [newAssetTitle, setNewAssetTitle] = useState('');
+  const [newAssetFolder, setNewAssetFolder] = useState<string>("");
   const [newAssetType, setNewAssetType] = useState('SCORM');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadUrl, setUploadUrl] = useState('');
@@ -482,7 +490,7 @@ export default function App() {
   // Access Rule Modal State
   const [showAccessRuleModal, setShowAccessRuleModal] = useState(false);
   const [accessRuleSearchQuery, setAccessRuleSearchQuery] = useState('');
-  const [accessRuleType, setAccessRuleType] = useState<'Group' | 'Role' | 'Individual'>('Group');
+  const [accessRuleType, setAccessRuleType] = useState<'Group' | 'Role' | 'Individual' | 'Department'>('Group');
   const [showConflictResolutionModal, setShowConflictResolutionModal] = useState(false);
 
   // Permissions Dashboard State
@@ -687,8 +695,7 @@ export default function App() {
 
   const filteredRepository = repository.filter(item => {
     const matchesSearch = repositorySearchQuery === '' || 
-      item.title.toLowerCase().includes(repositorySearchQuery.toLowerCase()) ||
-      (item.tags && item.tags.some((tag: string) => tag.toLowerCase().includes(repositorySearchQuery.toLowerCase())));
+      item.title.toLowerCase().includes(repositorySearchQuery.toLowerCase());
     
     const matchesType = repositoryFilterType === 'All' || item.type === repositoryFilterType;
     const matchesVersion = repositoryFilterVersion === 'All' || item.version === repositoryFilterVersion;
@@ -797,6 +804,18 @@ export default function App() {
     // but we don't have a state for audit log search yet.
     // We could add one, or just let the user see the general logs.
     setOpenDropdownId(null);
+  };
+
+  const handleCreateFolder = (name: string, parentId: string | null, rootType: "internal" | "customer" | "archived") => {
+    const newFolder: Folder = {
+      id: `f${Date.now()}`,
+      name,
+      parentId,
+      rootType,
+      createdAt: new Date().toISOString(),
+    };
+    setFolders(prev => [...prev, newFolder]);
+    return newFolder;
   };
 
   const handleCreateGroup = (openAutomationModal: boolean = false) => {
@@ -1500,7 +1519,7 @@ export default function App() {
         </header>
 
         {/* SCROLLABLE CONTENT AREA */}
-        <div className="flex-1 overflow-y-auto p-10">
+        <div className={`flex-1 overflow-y-auto ${activeTab === 'repository' ? 'p-0' : 'p-10'}`}>
           
           {/* --- LEARNER DASHBOARD --- */}
           {environment !== 'admin' && activeTab === 'dashboard' && (
@@ -3036,187 +3055,15 @@ export default function App() {
 
           {/* --- ADMIN CENTRAL REPOSITORY --- */}
           {environment === 'admin' && activeTab === 'repository' && (
-            <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-4xl font-bold text-guesty-black tracking-tight">Central Repository</h2>
-                  <p className="text-guesty-forest/70 mt-2 text-lg">Manage standalone training materials, versions, and data tracking.</p>
-                </div>
-                <button onClick={() => setShowUploadModal(true)} className={`${theme.primary} ${theme.textPrimary} ${theme.primaryHover} font-bold px-5 py-3 rounded-[12px] shadow-sm transition-colors flex items-center gap-2`}>
-                  <Plus className="w-5 h-5" /> Upload Material
-                </button>
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-4 mb-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-guesty-forest/40" />
-                  <input 
-                    type="text" 
-                    placeholder="Search training materials by name..." 
-                    value={repositorySearchQuery}
-                    onChange={(e) => setRepositorySearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal focus:ring-1 focus:ring-guesty-teal transition-all bg-white"
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
-                    <select 
-                      value={repositoryFilterType}
-                      onChange={(e) => setRepositoryFilterType(e.target.value)}
-                      className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
-                    >
-                      <option value="All">All Types</option>
-                      <option value="Video">Video</option>
-                      <option value="SCORM">SCORM</option>
-                      <option value="PDF">PDF</option>
-                      <option value="Assessment">Assessment</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
-                  </div>
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
-                    <select 
-                      value={repositoryFilterVersion}
-                      onChange={(e) => setRepositoryFilterVersion(e.target.value)}
-                      className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
-                    >
-                      <option value="All">All Versions</option>
-                      {Array.from(new Set(repository.map(item => item.version))).map(version => (
-                        <option key={version as string} value={version as string}>{version as string}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
-                  </div>
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
-                    <select 
-                      value={repositoryFilterStatus}
-                      onChange={(e) => setRepositoryFilterStatus(e.target.value)}
-                      className="pl-9 pr-8 py-3 rounded-[12px] border border-guesty-beige focus:outline-none focus:border-guesty-teal appearance-none bg-white font-bold text-sm text-guesty-forest"
-                    >
-                      <option value="All">All Statuses</option>
-                      <option value="Active">Active</option>
-                      <option value="Archived">Archived</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-guesty-cream/50 text-xs font-bold text-guesty-forest/60 uppercase tracking-widest">
-                        <th className="p-5 pl-8 font-bold">Material Name</th>
-                        <th className="p-5 font-bold">Type</th>
-                        <th className="p-5 font-bold">Data Tracking</th>
-                        <th className="p-5 font-bold">Linked Courses</th>
-                        <th className="p-5 font-bold">Version History</th>
-                        <th className="p-5 font-bold">Status</th>
-                        <th className="p-5 pr-8 font-bold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-guesty-beige">
-                      {filteredRepository.map((item) => (
-                        <tr key={item.id} className={`hover:bg-guesty-cream/30 transition-colors ${item.status === 'Archived' ? 'opacity-60' : ''}`}>
-                          <td className="p-5 pl-8">
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-3">
-                                <div className="text-guesty-forest/40">{getIconForType(item.type)}</div>
-                                <span className="font-bold text-guesty-black">{item.title}</span>
-                              </div>
-                              {item.tags && item.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1 ml-8">
-                                  {item.tags.map((tag: string, idx: number) => (
-                                    <span key={idx} className="text-[10px] font-bold bg-guesty-cream text-guesty-forest/70 px-1.5 py-0.5 rounded-[4px]">
-                                      {tag}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-5 text-sm font-bold text-guesty-forest/60">{item.type}</td>
-                          <td className="p-5">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-bold text-guesty-black">{item.views} Views</span>
-                              <span className="text-xs text-guesty-forest/60">{item.completionRate} Avg. Completion</span>
-                            </div>
-                          </td>
-                          <td className="p-5">
-                            <button 
-                              onClick={() => { setSelectedLinkedAsset(item); setShowLinkedCoursesModal(true); }}
-                              className="text-sm font-bold text-guesty-ocean hover:text-guesty-ocean/80 underline decoration-guesty-ocean/30 underline-offset-4 transition-colors"
-                            >
-                              {courses.filter(c => c.modules?.some((m: any) => m.id === item.id)).length}
-                            </button>
-                          </td>
-                          <td className="p-5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold bg-guesty-cloud text-guesty-ocean px-2 py-1 rounded-[4px]">{item.version}</span>
-                              <button 
-                                onClick={() => { setSelectedAsset(item); setShowUpdateModal(true); }}
-                                className="text-guesty-forest/40 hover:text-guesty-forest transition-colors" 
-                                title="Upload New Version"
-                              >
-                                <History className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="p-5">
-                            <button 
-                              onClick={() => {
-                                if (item.status === 'Active') {
-                                  setAssetToArchive(item);
-                                  setShowArchiveModal(true);
-                                } else {
-                                  setRepository(repository.map(r => r.id === item.id ? { ...r, status: 'Active' } : r));
-                                }
-                              }}
-                              className={`text-xs font-bold px-3 py-1 rounded-[6px] uppercase tracking-wider transition-colors cursor-pointer hover:opacity-80 ${item.status === 'Active' ? 'bg-guesty-ice/50 text-guesty-nature' : 'bg-guesty-beige text-guesty-forest/60'}`}
-                            >
-                              {item.status}
-                            </button>
-                          </td>
-                          <td className="p-5 pr-8 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button 
-                                onClick={() => setPreviewAsset(item)}
-                                className="p-2 text-guesty-forest/60 hover:text-guesty-black hover:bg-guesty-beige rounded-[8px] transition-colors" 
-                                title="Preview"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  setAssetToEdit(item);
-                                  setShowEditAssetModal(true);
-                                }}
-                                className="p-2 text-guesty-forest/60 hover:text-guesty-black hover:bg-guesty-beige rounded-[8px] transition-colors" 
-                                title="Edit"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  setAssetToDelete(item);
-                                  setShowDeleteModal(true);
-                                }}
-                                className="p-2 text-guesty-forest/60 hover:text-guesty-merlot hover:bg-guesty-blush rounded-[8px] transition-colors" 
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            <div className="h-full">
+              <RepositoryDashboard 
+                repository={repository}
+                setRepository={setRepository}
+                folders={folders}
+                onCreateFolder={handleCreateFolder}
+                courses={courses}
+                setCourses={setCourses}
+              />
             </div>
           )}
 
@@ -3590,13 +3437,6 @@ export default function App() {
                               <div className="text-guesty-forest/70">{getIconForType(asset.type)}</div>
                               <h5 className="font-bold text-guesty-black text-sm leading-tight">{asset.title}</h5>
                             </div>
-                            <button 
-                              onClick={() => setPreviewAsset(asset)}
-                              className="text-guesty-forest/40 hover:text-guesty-black transition-colors"
-                              title="Preview Asset"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
                           </div>
                           <div className="flex items-center justify-between mt-3">
                             <div className="flex items-center gap-2">
@@ -4097,20 +3937,6 @@ export default function App() {
                               <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-[8px] text-xs font-bold text-guesty-black shadow-sm uppercase tracking-widest">
                                 {course.category}
                               </div>
-                              {environment === 'admin' && (
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab('courses'); 
-                                    setActiveCourseId(course.id); 
-                                    setCourseBuilderTab('access');
-                                  }}
-                                  className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-full text-guesty-black shadow-sm hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
-                                  title="Edit Access & Permissions"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                              )}
                             </div>
                             <div className="p-5 flex flex-col flex-1">
                               <div className="flex items-center justify-between mb-3">
@@ -4141,16 +3967,6 @@ export default function App() {
                                         <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
                                           <Info className="w-4 h-4" /> View Details
                                         </button>
-                                        {environment === 'admin' && (
-                                          <button onClick={() => { 
-                                            setActiveTab('courses'); 
-                                            setActiveCourseId(course.id); 
-                                            setCourseBuilderTab('access');
-                                            setOpenDropdownId(null);
-                                          }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
-                                            <Edit2 className="w-4 h-4" /> Edit Access & Permissions
-                                          </button>
-                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -4204,20 +4020,6 @@ export default function App() {
                           <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-[8px] text-xs font-bold text-guesty-black shadow-sm uppercase tracking-widest">
                             {course.category}
                           </div>
-                          {environment === 'admin' && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveTab('courses'); 
-                                setActiveCourseId(course.id); 
-                                setCourseBuilderTab('access');
-                              }}
-                              className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-full text-guesty-black shadow-sm hover:bg-white transition-colors opacity-0 group-hover:opacity-100"
-                              title="Edit Access & Permissions"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
                         </div>
                         <div className="p-5 flex flex-col flex-1">
                           <div className="flex items-center justify-between mb-3">
@@ -4248,16 +4050,6 @@ export default function App() {
                                     <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
                                       <Info className="w-4 h-4" /> View Details
                                     </button>
-                                    {environment === 'admin' && (
-                                      <button onClick={() => { 
-                                        setActiveTab('courses'); 
-                                        setActiveCourseId(course.id); 
-                                        setCourseBuilderTab('access');
-                                        setOpenDropdownId(null);
-                                      }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
-                                        <Edit2 className="w-4 h-4" /> Edit Access & Permissions
-                                      </button>
-                                    )}
                                   </div>
                                 )}
                               </div>
@@ -4452,50 +4244,172 @@ export default function App() {
 
       {/* UPDATE VERSION MODAL */}
       {/* UPLOAD NEW ASSET MODAL */}
-      <AssetUploader 
-        isOpen={showUploadModal} 
-        onClose={() => setShowUploadModal(false)} 
-        onUpload={(newAssetData) => {
-          const newAsset = {
-            id: `a${repository.length + 1}`,
-            title: newAssetData.title,
-            type: newAssetData.type,
-            version: 'v1.0',
-            usedIn: 0,
-            url: newAssetData.url,
-            uploadedBy: 'Current User',
-            uploadedAt: new Date().toISOString().split('T')[0],
-            fileName: newAssetData.file?.name || (newAssetData.type === 'HTML Link' ? newAssetData.url : 'Unknown'),
-            tags: [],
-            icon: newAssetData.type === 'Video' ? <FileVideo className="w-5 h-5" /> : 
-                  newAssetData.type === 'PDF' ? <FileText className="w-5 h-5" /> : 
-                  newAssetData.type === 'SCORM' || newAssetData.type === 'xAPI' ? <FileArchive className="w-5 h-5" /> :
-                  newAssetData.type === 'HTML Link' ? <LinkIcon className="w-5 h-5" /> :
-                  newAssetData.type === 'Slides' ? <Layers className="w-5 h-5" /> :
-                  <HelpCircle className="w-5 h-5" />
-          };
-          setRepository([newAsset, ...repository]);
-        }} 
-      />
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-guesty-night/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-lg overflow-hidden border border-guesty-beige animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-guesty-beige flex items-center justify-between bg-guesty-cream/50">
+              <h3 className="text-xl font-bold text-guesty-black">Upload New Asset</h3>
+              <button onClick={() => {
+                setShowUploadModal(false);
+                setUploadFile(null);
+                setUploadUrl('');
+                setNewAssetTitle('');
+              }} className="text-guesty-forest/50 hover:text-guesty-black transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">Asset Title</label>
+                <input 
+                  type="text" 
+                  value={newAssetTitle}
+                  onChange={(e) => setNewAssetTitle(e.target.value)}
+                  placeholder="e.g., Advanced Python Labs"
+                  className="w-full px-4 py-3 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-forest focus:ring-1 focus:ring-guesty-forest outline-none transition-all"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">Select Asset Type</label>
+                <select 
+                  value={newAssetType}
+                  onChange={(e) => {
+                    setNewAssetType(e.target.value);
+                    setUploadFile(null);
+                    setUploadUrl('');
+                  }}
+                  className="w-full px-4 py-3 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-forest focus:ring-1 focus:ring-guesty-forest outline-none transition-all"
+                >
+                  <option value="SCORM">SCORM</option>
+                  <option value="xAPI">xAPI</option>
+                  <option value="PDF">PDF</option>
+                  <option value="Slides">Slides</option>
+                  <option value="Video">Video</option>
+                  <option value="HTML Link">HTML Link</option>
+                </select>
+              </div>
 
-      {/* ASSET PREVIEWER */}
-      <UniversalPreviewer 
-        asset={previewAsset} 
-        onClose={() => setPreviewAsset(null)} 
-      />
+              <div>
+                <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">Destination Folder *</label>
+                <select 
+                  value={newAssetFolder}
+                  onChange={(e) => setNewAssetFolder(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-[8px] text-sm focus:border-guesty-forest focus:ring-1 focus:ring-guesty-forest outline-none transition-all font-medium ${
+                    newAssetFolder ? "bg-white border-guesty-beige text-guesty-black" : "bg-guesty-cream/30 border-guesty-beige text-guesty-forest/40"
+                  }`}
+                >
+                  <option value="" disabled>Select a folder...</option>
+                  <option value="Internal training">Internal training</option>
+                  <option value="Customer training">Customer training</option>
+                  <option value="Archived training">Archived training</option>
+                </select>
+                {!newAssetFolder && (
+                  <p className="text-[10px] text-red-500 mt-1.5 font-bold uppercase tracking-tighter">* Folder selection is mandatory</p>
+                )}
+              </div>
 
-      {/* EDIT ASSET MODAL */}
-      <EditAssetModal
-        isOpen={showEditAssetModal}
-        onClose={() => {
-          setShowEditAssetModal(false);
-          setAssetToEdit(null);
-        }}
-        asset={assetToEdit}
-        onSave={(updatedAsset) => {
-          setRepository(repository.map(r => r.id === updatedAsset.id ? updatedAsset : r));
-        }}
-      />
+              {newAssetType === 'HTML Link' ? (
+                <div>
+                  <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">URL</label>
+                  <input 
+                    type="url" 
+                    value={uploadUrl}
+                    onChange={(e) => setUploadUrl(e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full px-4 py-3 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-forest focus:ring-1 focus:ring-guesty-forest outline-none transition-all"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">Upload File</label>
+                  <div className="relative w-full p-8 bg-guesty-cream/50 border-2 border-dashed border-guesty-beige rounded-[12px] flex flex-col items-center justify-center gap-3 hover:border-guesty-forest/30 hover:bg-guesty-cream transition-all cursor-pointer">
+                    <input
+                      type="file"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      accept={
+                        newAssetType === 'SCORM' || newAssetType === 'xAPI' ? '.zip' :
+                        newAssetType === 'PDF' ? '.pdf' :
+                        newAssetType === 'Slides' ? '.ppt,.pptx' :
+                        newAssetType === 'Video' ? 'video/*' :
+                        '*'
+                      }
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          setUploadFile(e.target.files[0]);
+                          if (!newAssetTitle) {
+                            setNewAssetTitle(e.target.files[0].name.split('.').slice(0, -1).join('.'));
+                          }
+                        }
+                      }}
+                    />
+                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm text-guesty-forest">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-guesty-black">
+                        {uploadFile ? uploadFile.name : 'Click to upload or drag and drop'}
+                      </p>
+                      {!uploadFile && (
+                        <p className="text-xs text-guesty-forest/60 mt-1">
+                          {newAssetType === 'SCORM' || newAssetType === 'xAPI' ? 'ZIP (max. 500MB)' :
+                           newAssetType === 'PDF' ? 'PDF (max. 500MB)' :
+                           newAssetType === 'Slides' ? 'PPT, PPTX (max. 500MB)' :
+                           newAssetType === 'Video' ? 'MP4, MOV (max. 500MB)' :
+                           'Max. 500MB'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-guesty-beige bg-guesty-cream/30 flex justify-end gap-3">
+              <button onClick={() => {
+                setShowUploadModal(false);
+                setUploadFile(null);
+                setUploadUrl('');
+                setNewAssetTitle('');
+              }} className="px-6 py-2.5 rounded-[8px] font-bold text-guesty-forest hover:bg-guesty-beige transition-colors">
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (!newAssetTitle || !newAssetFolder || (newAssetType !== 'HTML Link' && !uploadFile) || (newAssetType === 'HTML Link' && !uploadUrl)) return;
+                  const newAsset: FileItem = {
+                    id: `a${repository.length + 1}`,
+                    title: newAssetTitle,
+                    type: newAssetType,
+                    folderId: newAssetFolder,
+                    version: 'v1.0',
+                    usedIn: 0,
+                    status: 'Active',
+                    createdAt: new Date().toISOString().split('T')[0],
+                    size: uploadFile ? `${(uploadFile.size / (1024 * 1024)).toFixed(1)} MB` : '0.1 MB'
+                  };
+                  setRepository([newAsset, ...repository]);
+                  setNewAssetTitle('');
+                  setNewAssetFolder('');
+                  setUploadFile(null);
+                  setUploadUrl('');
+                  setShowUploadModal(false);
+                }}
+                disabled={!newAssetTitle || !newAssetFolder || (newAssetType !== 'HTML Link' && !uploadFile) || (newAssetType === 'HTML Link' && !uploadUrl)}
+                className={`px-6 py-2.5 rounded-[8px] font-bold text-white transition-colors shadow-sm ${
+                  !newAssetTitle || !newAssetFolder || (newAssetType !== 'HTML Link' && !uploadFile) || (newAssetType === 'HTML Link' && !uploadUrl)
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'hover:opacity-90'
+                }`}
+                style={{ backgroundColor: !newAssetTitle || !newAssetFolder || (newAssetType !== 'HTML Link' && !uploadFile) || (newAssetType === 'HTML Link' && !uploadUrl) ? undefined : '#2D5A56' }}
+              >
+                Upload to Repository
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDeleteModal && assetToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-guesty-night/40 backdrop-blur-sm animate-in fade-in duration-200">
@@ -4781,7 +4695,7 @@ export default function App() {
                   ...c,
                   modules: c.modules.map(m => m.id === selectedAsset.id ? { ...m, version: 'v2.0' } : m)
                 })));
-                setRepository(repository.map(r => r.id === selectedAsset.id ? { ...r, version: 'v2.0', history: ['v2.0 (Mar 2026)', ...(r.history || [])] } : r));
+                setRepository(repository.map(r => r.id === selectedAsset.id ? { ...r, version: 'v2.0', history: [{ version: 'v2.0', date: 'Mar 2026', size: r.size || '0 MB' }, ...(r.history || [])] } : r));
                 setShowUpdateModal(false);
               }} className="px-6 py-2.5 rounded-[8px] font-bold bg-guesty-nature text-white hover:bg-[#11554f] transition-colors shadow-sm">
                 Publish Update

@@ -1,5 +1,5 @@
 {
-  "name": "hagar - Guesty Academy - Training materials (Central repository)",
-  "description": "",
+  "name": "Central Repository Folder Organization System",
+  "description": "A training material repository with mandatory folder hierarchy: Internal, Customer, and Archived training.",
   "requestFramePermissions": []
 }
