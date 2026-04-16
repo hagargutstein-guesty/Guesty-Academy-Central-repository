@@ -35,7 +35,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
   setCourses
 }) => {
   const [selectedFolderId, setSelectedFolderId] = useState<string>("all");
-  const [isAdmin, setIsAdmin] = useState(true);
+  const isAdmin = true;
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
@@ -404,7 +404,6 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
         onSelectFolder={setSelectedFolderId}
         folders={folders}
         isAdmin={isAdmin}
-        onToggleAdmin={() => setIsAdmin(!isAdmin)}
         onRenameFolder={(folder) => {
           setEditingFolder(folder);
           setFolderRenameValue(folder.name);

@@ -7,7 +7,6 @@ interface SidebarProps {
   onSelectFolder: (folderId: string) => void;
   folders: Folder[];
   isAdmin: boolean;
-  onToggleAdmin: () => void;
   onRenameFolder: (folder: Folder) => void;
   onMoveFolder: (folder: Folder) => void;
   onDeleteFolder: (folder: Folder) => void;
@@ -18,7 +17,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectFolder,
   folders,
   isAdmin,
-  onToggleAdmin,
   onRenameFolder,
   onMoveFolder,
   onDeleteFolder,
@@ -181,20 +179,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </nav>
 
-      <div className="p-6 border-t border-guesty-beige/50 bg-guesty-ice/10">
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center space-x-3">
-            <div className={`w-2 h-2 rounded-full ${isAdmin ? "bg-guesty-nature" : "bg-guesty-beige"}`} />
-            <span className="text-[10px] font-bold text-guesty-forest/60 uppercase tracking-wider">{isAdmin ? "Admin View" : "User View"}</span>
-          </div>
-          <button
-            onClick={onToggleAdmin}
-            className="text-[10px] uppercase font-bold text-guesty-nature hover:text-guesty-forest tracking-widest transition-colors"
-          >
-            Switch
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

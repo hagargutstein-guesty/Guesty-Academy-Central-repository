@@ -818,6 +818,16 @@ export default function App() {
     return newFolder;
   };
 
+  const handleUpdateFolder = (folderId: string, updates: Partial<Folder>) => {
+    setFolders(prev => prev.map(f => f.id === folderId ? { ...f, ...updates } : f));
+  };
+
+  const handleDeleteFolder = (folderId: string) => {
+    setFolders(prev => prev.filter(f => f.id !== folderId));
+    // Also delete files in that folder or move them? 
+    // For now just delete the folder as per the prop requirement.
+  };
+
   const handleCreateGroup = (openAutomationModal: boolean = false) => {
     if (!newGroupName) return;
 
@@ -3061,6 +3071,8 @@ export default function App() {
                 setRepository={setRepository}
                 folders={folders}
                 onCreateFolder={handleCreateFolder}
+                onUpdateFolder={handleUpdateFolder}
+                onDeleteFolder={handleDeleteFolder}
                 courses={courses}
                 setCourses={setCourses}
               />
