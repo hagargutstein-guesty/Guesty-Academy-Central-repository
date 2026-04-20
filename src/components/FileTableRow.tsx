@@ -1,5 +1,5 @@
 import React from "react";
-import { MoreVertical, FileText, Video, FileArchive, History, Link2, Edit3, Trash2, Archive, BarChart3, Eye, Layers, Globe, Link, FileCode, Tag } from "lucide-react";
+import { MoreVertical, FileText, Video, FileArchive, History, Link2, Edit3, Trash2, Archive, BarChart3, Eye, Layers, Globe, Link, FileCode, Tag, HelpCircle } from "lucide-react";
 import { FileItem } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -17,6 +17,7 @@ interface FileTableRowProps {
   onPreview: (file: FileItem) => void;
   onRestore?: (file: FileItem) => void;
   onAssignToCourse?: (file: FileItem) => void;
+  onEditAssessment?: (file: FileItem) => void;
 }
 
 const FileTableRow: React.FC<FileTableRowProps> = ({
@@ -33,6 +34,7 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
   onPreview,
   onRestore,
   onAssignToCourse,
+  onEditAssessment,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
@@ -54,6 +56,7 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
       case "xAPI": return <FileCode className="w-4 h-4 text-guesty-ocean" />;
       case "HTML": return <Globe className="w-4 h-4 text-guesty-nature" />;
       case "Link": return <Link className="w-4 h-4 text-guesty-ocean" />;
+      case "Assessment": return <HelpCircle className="w-4 h-4 text-guesty-nature" />;
       default: return <FileText className="w-4 h-4 text-guesty-nature" />;
     }
   };
@@ -168,6 +171,15 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
                   <Eye className="w-4 h-4" />
                   <span>Preview</span>
                 </button>
+                {file.type === "Assessment" && onEditAssessment && (
+                  <button
+                    onClick={() => { onEditAssessment(file); setShowMenu(false); }}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-guesty-nature hover:bg-guesty-lemon/20 rounded-[12px] transition-colors font-bold"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span>Edit Questions</span>
+                  </button>
+                )}
                 <button
                   onClick={() => { onRename(file); setShowMenu(false); }}
                   className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-guesty-forest hover:bg-guesty-ice/50 rounded-[12px] transition-colors"

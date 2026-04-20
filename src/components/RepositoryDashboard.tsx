@@ -11,7 +11,10 @@ import RestoreAssetModal from "./RestoreAssetModal";
 import AssignToCourseModal from "./AssignToCourseModal";
 import BulkAssignModal from "./BulkAssignModal";
 import BulkMoveModal from "./BulkMoveModal";
-import { FileItem, Folder, HistoryEntry } from "../types";
+import { FileItem, Folder, HistoryEntry, Assessment, AssessmentAttempt, Group, Course } from "../types";
+import { AssessmentBuilder } from "./AssessmentBuilder";
+import { AssessmentAnalytics } from "./AssessmentAnalytics";
+import { v4 as uuidv4 } from "uuid";
 
 interface RepositoryDashboardProps {
   repository: FileItem[];
@@ -20,8 +23,12 @@ interface RepositoryDashboardProps {
   onCreateFolder: (name: string, parentId: string | null, rootType: "internal" | "customer" | "archived") => Folder;
   onUpdateFolder: (folderId: string, updates: Partial<Folder>) => void;
   onDeleteFolder: (folderId: string) => void;
-  courses: any[];
-  setCourses: React.Dispatch<React.SetStateAction<any[]>>;
+  courses: Course[];
+  setCourses: React.Dispatch<React.SetStateAction<Course[]>>;
+  groups: Group[];
+  attempts: AssessmentAttempt[];
+  onSaveAssessmentAttempt?: (attempt: AssessmentAttempt) => void;
+  userRole?: string;
 }
 
 export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({ 
@@ -32,10 +39,14 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
   onUpdateFolder,
   onDeleteFolder,
   courses,
-  setCourses
+  setCourses,
+  groups,
+  attempts,
+  onSaveAssessmentAttempt,
+  userRole = "Admin"
 }) => {
   const [selectedFolderId, setSelectedFolderId] = useState<string>("all");
-  const isAdmin = true;
+  const isAdmin = userRole === "Admin" || userRole === "Instructor";
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
@@ -78,6 +89,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
   const [updatedDateEnd, setUpdatedDateEnd] = useState<string>("");
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
+  const [isAssessmentBuilderOpen, setIsAssessmentBuilderOpen] = useState(false);
 
   const selectedFolder = useMemo(() => 
     folders.find(f => f.id === selectedFolderId) || { id: "all", name: "All Assets", rootType: "internal" }
@@ -210,6 +222,59 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
     setSelectedArchiveCourseIds([]);
   };
 
+  const handleSaveAssessment = async (assessment: Assessment) => {
+    // Save to backend
+    try {
+      const response = await fetch("/api/assessments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-tenant-id": "default-tenant"
+        },
+        body: JSON.stringify(assessment)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save assessment");
+      }
+
+      const result = await response.json();
+
+      // Update local repository state
+      const existingAsset = repository.find(a => a.id === assessment.id);
+      
+      if (existingAsset) {
+        setRepository(prev => prev.map(a => a.id === assessment.id ? {
+          ...a,
+          title: assessment.title,
+          assessmentData: assessment,
+          version: `v${(parseInt(a.version?.replace('v', '') || '1') + 1)}`
+        } : a));
+      } else {
+        const newAsset: FileItem = {
+          id: result.id,
+          title: assessment.title,
+          type: "Assessment",
+          folderId: selectedFolderId === "all" ? folders[0].id : selectedFolderId,
+          createdAt: new Date().toLocaleDateString(),
+          version: "v1",
+          status: "Active",
+          usedIn: 0,
+          views: 0,
+          completionRate: "0%",
+          assessmentData: assessment
+        };
+        setRepository(prev => [newAsset, ...prev]);
+      }
+
+      setIsAssessmentBuilderOpen(false);
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  };
+
   const handleRestore = (fileId: string, targetFolderId: string) => {
     setRepository(prev => prev.map(file => 
       file.id === fileId ? { ...file, status: 'Active', folderId: targetFolderId } : file
@@ -226,6 +291,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
 
       const newModule = {
         id: `m-${Date.now()}`,
+        assetId: selectedAsset.id,
         title: selectedAsset.title || selectedAsset.name,
         type: selectedAsset.type,
         version: selectedAsset.version || 'v1.0'
@@ -625,13 +691,25 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
             </div>
             
             <div className="w-px h-6 bg-guesty-beige mx-2" />
-            <button
-              onClick={() => setIsUploadModalOpen(true)}
-              className="flex items-center space-x-2 px-6 py-3 bg-guesty-nature text-white rounded-xl text-sm font-bold hover:bg-guesty-forest transition-all active:scale-95 shadow-sm"
-            >
-              <Plus className="w-5 h-5" />
-              <span>New</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setSelectedAsset(null);
+                  setIsAssessmentBuilderOpen(true);
+                }}
+                className="flex items-center space-x-2 px-4 py-3 bg-white border border-guesty-beige text-guesty-black rounded-xl text-sm font-bold hover:bg-guesty-ice transition-all active:scale-95 shadow-sm"
+              >
+                <Plus className="w-4 h-4 text-guesty-nature" />
+                <span>New Quiz</span>
+              </button>
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="flex items-center space-x-2 px-6 py-3 bg-guesty-nature text-white rounded-xl text-sm font-bold hover:bg-guesty-forest transition-all active:scale-95 shadow-sm"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Upload</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -769,6 +847,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
                       onPreview={(asset) => { setSelectedAsset(asset); setIsPreviewModalOpen(true); }}
                       onRestore={(asset) => { setSelectedAsset(asset); setIsRestoreModalOpen(true); }}
                       onAssignToCourse={(asset) => { setSelectedAsset(asset); setIsAssignModalOpen(true); }}
+                      onEditAssessment={(asset) => { setSelectedAsset(asset); setIsAssessmentBuilderOpen(true); }}
                     />
                   ))}
                 </tbody>
@@ -1284,6 +1363,41 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
         isOpen={isPreviewModalOpen}
         onClose={() => { setIsPreviewModalOpen(false); setSelectedAsset(null); }}
       />
+
+      {/* Assessment Builder Modal */}
+      <AnimatePresence>
+        {isAssessmentBuilderOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 40 }}
+              className="w-full max-w-7xl h-full flex flex-col"
+            >
+              <AssessmentBuilder 
+                initialData={selectedAsset?.assessmentData}
+                onSave={handleSaveAssessment}
+                onCancel={() => setIsAssessmentBuilderOpen(false)}
+                onAttemptComplete={onSaveAssessmentAttempt}
+                userRole={userRole}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Assessment Analytics Modal */}
+      <AnimatePresence>
+        {isAnalyticsModalOpen && selectedAsset?.assessmentData && (
+          <AssessmentAnalytics 
+            assessment={selectedAsset.assessmentData}
+            attempts={attempts}
+            courses={courses}
+            groups={groups}
+            onClose={() => { setIsAnalyticsModalOpen(false); setSelectedAsset(null); }}
+          />
+        )}
+      </AnimatePresence>
 
       <UploadModal
         isOpen={isUploadModalOpen || isVersionModalOpen}

@@ -10,7 +10,7 @@ import {
   Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
-import { FileItem, Folder } from './types';
+import { FileItem, Folder, AssessmentAttempt, Group, Course } from './types';
 import { ROOT_FOLDERS } from './constants';
 
 // --- MOCK DATA ---
@@ -157,6 +157,62 @@ const initialRepository = [
   { id: 'a4', title: 'Old Compliance 2024', type: 'SCORM', version: 'v1.0', usedIn: 0, views: 4500, completionRate: '99%', status: 'Archived', history: [{ version: 'v1.0', date: 'Jan 2024', size: '5.6 MB' }], folderId: 'f3', url: 'https://example.com/scorm-mock-old', createdAt: '2024-01-10' },
   { id: 'a5', title: 'Customer Success Playbook', type: 'PDF', version: 'v1.2', usedIn: 5, views: 1500, completionRate: '85%', status: 'Active', folderId: 'f2', createdAt: '2025-11-12' },
   { id: 'a6', title: 'Advanced React Patterns', type: 'Video', version: 'v1.0', usedIn: 1, views: 450, completionRate: '60%', status: 'Active', folderId: 'f1', createdAt: '2026-02-28' },
+  { 
+    id: 'a7', 
+    title: 'Data Security Certification', 
+    type: 'Assessment', 
+    version: 'v1.0', 
+    usedIn: 4, 
+    views: 120, 
+    completionRate: '85%', 
+    status: 'Active', 
+    folderId: 'f1', 
+    createdAt: '2026-04-18',
+    assessmentData: {
+      id: 'a7',
+      tenant_id: 'default-tenant',
+      title: 'Data Security Certification',
+      passing_score: 80,
+      settings: {
+        timeLimit: 15,
+        shuffleQuestions: true,
+        shuffleAnswers: true,
+        maxAttempts: 2,
+        scoringType: 'binary'
+      },
+      questions: [
+        {
+          id: 'q1',
+          assessment_id: 'a7',
+          type: 'single_choice',
+          content: 'What is the primary purpose of 2FA?',
+          points: 10,
+          order_index: 0,
+          correct_feedback: 'Excellent! You understand the foundational principles of multi-factor authentication.',
+          incorrect_feedback: 'Remember: 2FA is about verification, not encryption or speed.',
+          answers: [
+            { id: 'ans1', question_id: 'q1', content: 'Double the encryption strength', is_correct: false },
+            { id: 'ans2', question_id: 'q1', content: 'Add a secondary layer of identity verification', is_correct: true, feedback: 'Correct. MFA/2FA is an additional layer.' },
+            { id: 'ans3', question_id: 'q1', content: 'Increase network speed', is_correct: false }
+          ]
+        },
+        {
+          id: 'q2',
+          assessment_id: 'a7',
+          type: 'multiple_choice',
+          content: 'Which of the following are considered sensitive PII?',
+          points: 20,
+          order_index: 1,
+          answers: [
+            { id: 'ans4', question_id: 'q2', content: 'Social Security Number', is_correct: true },
+            { id: 'ans5', question_id: 'q2', content: 'Public Twitter Handle', is_correct: false },
+            { id: 'ans6', question_id: 'q2', content: 'Date of Birth', is_correct: true },
+            { id: 'ans7', question_id: 'q2', content: 'Office Location', is_correct: false }
+          ]
+        }
+      ]
+    }
+  },
 ];
 
 interface RuleCondition {
@@ -510,6 +566,34 @@ export default function App() {
   // User Progress Modal State
   const [showUserProgressModal, setShowUserProgressModal] = useState(false);
   const [progressUserId, setProgressUserId] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState<AssessmentAttempt[]>(() => getInitialState('guesty_assessment_attempts', [
+    {
+      id: "att-1",
+      assessment_id: "a7",
+      user_id: "u1",
+      user_name: "Adi Cohen",
+      group_ids: ["g1", "g2"],
+      score: 30,
+      max_score: 30,
+      percentage: 100,
+      passed: true,
+      started_at: new Date(Date.now() - 3600000).toISOString(),
+      completed_at: new Date(Date.now() - 3000000).toISOString(),
+      responses: {
+        "q1": "ans2",
+        "q2": ["ans4", "ans6"]
+      }
+    }
+  ]));
+
+  const handleSaveAssessmentAttempt = (attempt: AssessmentAttempt) => {
+    setAttempts(prev => {
+      const filtered = prev.filter(a => a.id !== attempt.id);
+      const next = [...filtered, attempt];
+      localStorage.setItem('guesty_assessment_attempts', JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (actionUserId && showGroupAssignmentModal) {
@@ -3075,6 +3159,10 @@ export default function App() {
                 onDeleteFolder={handleDeleteFolder}
                 courses={courses}
                 setCourses={setCourses}
+                groups={groups}
+                attempts={attempts}
+                onSaveAssessmentAttempt={handleSaveAssessmentAttempt}
+                userRole={environment === 'admin' ? 'Admin' : 'Instructor'} // Simulating instructor role if needed
               />
             </div>
           )}

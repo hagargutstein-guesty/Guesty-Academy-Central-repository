@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   UploadCloud, X, FileVideo, FileText, FileArchive, Link as LinkIcon, 
   Layers, HelpCircle, CheckCircle, AlertCircle, RefreshCw, Eye, Play,
