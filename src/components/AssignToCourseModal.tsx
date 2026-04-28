@@ -62,7 +62,7 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden border border-guesty-beige"
+        className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden border border-guesty-beige"
       >
         {/* Header */}
         <div className="p-8 border-b border-guesty-beige flex items-center justify-between bg-guesty-ice/20">
@@ -72,7 +72,7 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
             </div>
             <div>
               <h2 className="text-xl font-bold text-guesty-black tracking-tight">Assign {asset?.type || 'Asset'}</h2>
-              <p className="text-xs text-guesty-forest/50 font-medium truncate max-w-[240px]">{asset?.title || asset?.name}</p>
+              <p className="text-xs text-guesty-forest/50 font-medium truncate max-w-md">{asset?.title || asset?.name}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-guesty-ice rounded-full transition-colors text-guesty-forest/40 hover:text-guesty-forest">
@@ -103,7 +103,7 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/30 group-focus-within:text-guesty-nature transition-colors" />
                 <input 
                   type="text"
-                  placeholder="Search courses..."
+                  placeholder="Search courses by title or audience..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-guesty-ice/30 border border-guesty-beige rounded-[16px] text-sm outline-none focus:bg-white focus:border-guesty-nature transition-all"
@@ -118,20 +118,20 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
                     {selectedCourseIds.length} Selected
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto custom-scrollbar pr-2">
                   {filteredCourses.length > 0 ? (
                     filteredCourses.map(course => (
                       <button
                         key={course.id}
                         onClick={() => handleToggleCourse(course.id)}
-                        className={`flex items-center justify-between p-4 rounded-[16px] border transition-all text-left ${
+                        className={`flex items-center justify-between p-4 rounded-[16px] border transition-all text-left group ${
                           selectedCourseIds.includes(course.id) 
-                            ? "bg-guesty-lemon/20 border-guesty-nature" 
+                            ? "bg-guesty-nature/[0.03] border-guesty-nature" 
                             : "bg-guesty-ice/10 border-guesty-beige hover:border-guesty-nature/50"
                         }`}
                       >
                         <div className="flex items-center space-x-3 truncate">
-                          <div className={`w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0 ${selectedCourseIds.includes(course.id) ? "bg-guesty-nature text-white" : "bg-guesty-beige text-guesty-forest/40"}`}>
+                          <div className={`w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0 transition-colors ${selectedCourseIds.includes(course.id) ? "bg-guesty-nature text-white" : "bg-guesty-beige text-guesty-forest/40 group-hover:bg-guesty-nature/10"}`}>
                             <BookOpen className="w-4 h-4" />
                           </div>
                           <div className="truncate">

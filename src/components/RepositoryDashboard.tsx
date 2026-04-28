@@ -1395,6 +1395,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
             courses={courses}
             groups={groups}
             onClose={() => { setIsAnalyticsModalOpen(false); setSelectedAsset(null); }}
+            onSaveAssessmentAttempt={onSaveAssessmentAttempt}
           />
         )}
       </AnimatePresence>

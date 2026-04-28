@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Assessment, AssessmentAttempt, Group, Course } from "../types";
 import { cn } from "../lib/utils";
+import { AssessmentAttemptReview } from "./AssessmentAttemptReview";
 
 interface AssessmentAnalyticsProps {
   assessment: Assessment;
@@ -26,6 +27,7 @@ interface AssessmentAnalyticsProps {
   groups: Group[];
   courses: Course[];
   onClose: () => void;
+  onSaveAssessmentAttempt?: (attempt: AssessmentAttempt) => void;
 }
 
 export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
@@ -33,7 +35,8 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
   attempts,
   groups,
   courses,
-  onClose
+  onClose,
+  onSaveAssessmentAttempt
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("all");
@@ -54,6 +57,8 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
     });
   }, [attempts, assessment.id, searchQuery, selectedGroupId, selectedCourseId, selectedStatus]);
 
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+
   const stats = useMemo(() => {
     if (filteredAttempts.length === 0) return { avgScore: 0, passRate: 0, total: 0 };
     const passed = filteredAttempts.filter(a => a.passed).length;
@@ -65,6 +70,8 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
     };
   }, [filteredAttempts]);
 
+  const selectedAttempt = attempts.find(a => a.id === selectedAttemptId);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <motion.div
@@ -73,6 +80,23 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-white rounded-[40px] shadow-2xl w-full max-w-6xl h-[85vh] overflow-hidden border border-gray-100 flex flex-col"
       >
+        <AnimatePresence>
+          {selectedAttempt && (
+            <AssessmentAttemptReview 
+              attempt={selectedAttempt}
+              assessment={assessment}
+              onClose={() => setSelectedAttemptId(null)}
+              onUpdateScore={(updatedAttempt) => {
+                // In a real app, this would call a backend
+                // For now, we'll just update parent state via props if we had a callback
+                // Since attempts is a prop, we assume it's refreshed from elsewhere
+                setSelectedAttemptId(null);
+                if (onSaveAssessmentAttempt) onSaveAssessmentAttempt(updatedAttempt);
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Header */}
         <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-guesty-ice/20">
           <div className="flex items-center gap-4">
@@ -192,9 +216,10 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                   <th className="text-left px-4 py-4">Learner</th>
                   <th className="text-left px-4 py-4">Course Context</th>
                   <th className="text-left px-4 py-4">Groups</th>
-                  <th className="text-center px-4 py-4">Score</th>
+                   <th className="text-center px-4 py-4">Score</th>
                   <th className="text-center px-4 py-4">Status</th>
                   <th className="text-right px-4 py-4">Completed On</th>
+                  <th className="text-right px-4 py-4"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -205,7 +230,8 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                       key={attempt.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="hover:bg-gray-50/50 transition-all group"
+                      className="hover:bg-gray-50/50 transition-all group cursor-pointer"
+                      onClick={() => setSelectedAttemptId(attempt.id)}
                     >
                       <td className="px-4 py-6">
                         <div className="flex items-center gap-3">
@@ -271,6 +297,18 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                              {new Date(attempt.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                            </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-6 text-right">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAttemptId(attempt.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white rounded-lg border border-transparent hover:border-gray-100 transition-all text-guesty-nature font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                        >
+                          Check & Score
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
                       </td>
                     </motion.tr>
                   );
