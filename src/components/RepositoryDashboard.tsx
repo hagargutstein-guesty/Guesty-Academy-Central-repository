@@ -283,14 +283,14 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
     setSelectedAsset(null);
   };
 
-  const handleAssignToCourse = (courseId: string, position: 'start' | 'end' | 'after', relativeToId?: string) => {
+  const handleAssignToCourse = (courseIds: string[], position: 'start' | 'end' | 'after', relativeToId?: string) => {
     if (!selectedAsset) return;
 
     setCourses(prev => prev.map(course => {
-      if (course.id !== courseId) return course;
+      if (!courseIds.includes(course.id)) return course;
 
       const newModule = {
-        id: `m-${Date.now()}`,
+        id: `m-${Date.now()}-${course.id}`,
         assetId: selectedAsset.id,
         title: selectedAsset.title || selectedAsset.name,
         type: selectedAsset.type,
@@ -317,7 +317,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
 
     // Update asset usage count
     setRepository(prev => prev.map(item => 
-      item.id === selectedAsset.id ? { ...item, usedIn: (item.usedIn || 0) + 1 } : item
+      item.id === selectedAsset.id ? { ...item, usedIn: (item.usedIn || 0) + courseIds.length } : item
     ));
   };
 

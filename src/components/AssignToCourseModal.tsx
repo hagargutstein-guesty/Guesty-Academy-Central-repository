@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, BookOpen, Check, Layers, Plus } from 'lucide-react';
+import { X, BookOpen, Check, Layers, Plus, Search, Info } from 'lucide-react';
 import { FileItem } from '../types';
 
 interface AssignToCourseModalProps {
@@ -8,7 +8,7 @@ interface AssignToCourseModalProps {
   onClose: () => void;
   asset: FileItem | null;
   courses: any[];
-  onAssign: (courseId: string, position: 'start' | 'end' | 'after', relativeToId?: string) => void;
+  onAssign: (courseIds: string[], position: 'start' | 'end' | 'after', relativeToId?: string) => void;
 }
 
 const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
@@ -18,23 +18,39 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
   courses,
   onAssign
 }) => {
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [position, setPosition] = useState<'start' | 'end' | 'after'>('end');
   const [relativeToId, setRelativeToId] = useState<string>('');
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const selectedCourse = courses.find(c => c.id === selectedCourseId);
+  const filteredCourses = useMemo(() => {
+    return courses.filter(c => 
+      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.audience || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [courses, searchQuery]);
+
+  const canUseAfter = selectedCourseIds.length === 1;
+  const selectedCourse = selectedCourseIds.length === 1 ? courses.find(c => c.id === selectedCourseIds[0]) : null;
+
+  const handleToggleCourse = (id: string) => {
+    setSelectedCourseIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
   const handleAssign = () => {
-    if (!selectedCourseId) return;
-    onAssign(selectedCourseId, position, relativeToId);
+    if (selectedCourseIds.length === 0) return;
+    onAssign(selectedCourseIds, position, relativeToId);
     setIsSuccess(true);
     setTimeout(() => {
       setIsSuccess(false);
       onClose();
-      setSelectedCourseId('');
+      setSelectedCourseIds([]);
       setPosition('end');
       setRelativeToId('');
+      setSearchQuery('');
     }, 1500);
   };
 
@@ -55,8 +71,8 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
               <Layers className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-guesty-black tracking-tight">Assign to Course</h2>
-              <p className="text-xs text-guesty-forest/50 font-medium">{asset?.title || asset?.name}</p>
+              <h2 className="text-xl font-bold text-guesty-black tracking-tight">Assign {asset?.type || 'Asset'}</h2>
+              <p className="text-xs text-guesty-forest/50 font-medium truncate max-w-[240px]">{asset?.title || asset?.name}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-guesty-ice rounded-full transition-colors text-guesty-forest/40 hover:text-guesty-forest">
@@ -65,7 +81,7 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-8 space-y-8">
+        <div className="p-8 space-y-6">
           {isSuccess ? (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -77,43 +93,64 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
               </div>
               <div>
                 <h3 className="text-xl font-bold text-guesty-black">Successfully Assigned!</h3>
-                <p className="text-sm text-guesty-forest/60 mt-1">The material has been added to the course.</p>
+                <p className="text-sm text-guesty-forest/60 mt-1">Material added to {selectedCourseIds.length} course{selectedCourseIds.length > 1 ? 's' : ''}.</p>
               </div>
             </motion.div>
           ) : (
             <>
+              {/* Search Bar */}
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/30 group-focus-within:text-guesty-nature transition-colors" />
+                <input 
+                  type="text"
+                  placeholder="Search courses..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-guesty-ice/30 border border-guesty-beige rounded-[16px] text-sm outline-none focus:bg-white focus:border-guesty-nature transition-all"
+                />
+              </div>
+
               {/* Course Selection */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold text-guesty-forest/40 uppercase tracking-[0.2em] ml-1">Select Course</label>
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-[10px] font-bold text-guesty-forest/40 uppercase tracking-[0.2em]">Select Courses</label>
+                  <span className="text-[10px] font-bold text-guesty-nature bg-guesty-lemon/20 px-2 py-0.5 rounded-full">
+                    {selectedCourseIds.length} Selected
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                  {courses.map(course => (
-                    <button
-                      key={course.id}
-                      onClick={() => setSelectedCourseId(course.id)}
-                      className={`flex items-center justify-between p-4 rounded-[16px] border transition-all text-left ${
-                        selectedCourseId === course.id 
-                          ? "bg-guesty-lemon/20 border-guesty-nature ring-1 ring-guesty-nature" 
-                          : "bg-guesty-ice/10 border-guesty-beige hover:border-guesty-nature/50"
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-[8px] flex items-center justify-center ${selectedCourseId === course.id ? "bg-guesty-nature text-white" : "bg-guesty-beige text-guesty-forest/40"}`}>
-                          <BookOpen className="w-4 h-4" />
+                  {filteredCourses.length > 0 ? (
+                    filteredCourses.map(course => (
+                      <button
+                        key={course.id}
+                        onClick={() => handleToggleCourse(course.id)}
+                        className={`flex items-center justify-between p-4 rounded-[16px] border transition-all text-left ${
+                          selectedCourseIds.includes(course.id) 
+                            ? "bg-guesty-lemon/20 border-guesty-nature" 
+                            : "bg-guesty-ice/10 border-guesty-beige hover:border-guesty-nature/50"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 truncate">
+                          <div className={`w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0 ${selectedCourseIds.includes(course.id) ? "bg-guesty-nature text-white" : "bg-guesty-beige text-guesty-forest/40"}`}>
+                            <BookOpen className="w-4 h-4" />
+                          </div>
+                          <div className="truncate">
+                            <p className="text-sm font-bold text-guesty-black truncate">{course.title}</p>
+                            <p className="text-[10px] text-guesty-forest/50 font-medium truncate">{course.audience}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-bold text-guesty-black">{course.title}</p>
-                          <p className="text-[10px] text-guesty-forest/50 font-medium">{course.modules?.length || 0} items • {course.audience}</p>
-                        </div>
-                      </div>
-                      {selectedCourseId === course.id && <Check className="w-5 h-5 text-guesty-nature" />}
-                    </button>
-                  ))}
+                        {selectedCourseIds.includes(course.id) && <Check className="w-5 h-5 text-guesty-nature" />}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-guesty-forest/40 text-sm italic">No courses found matching "{searchQuery}"</div>
+                  )}
                 </div>
               </div>
 
               {/* Placement Options */}
               <AnimatePresence>
-                {selectedCourseId && (
+                {selectedCourseIds.length > 0 && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -127,24 +164,34 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
                         {[
                           { id: 'start', label: 'Beginning' },
                           { id: 'end', label: 'End' },
-                          { id: 'after', label: 'After Item...' }
+                          { id: 'after', label: 'After Item...', disabled: !canUseAfter }
                         ].map(opt => (
                           <button
                             key={opt.id}
+                            disabled={opt.disabled}
                             onClick={() => setPosition(opt.id as any)}
                             className={`flex-1 py-2.5 rounded-[12px] text-xs font-bold border transition-all ${
                               position === opt.id 
                                 ? "bg-guesty-nature text-white border-guesty-nature shadow-sm" 
-                                : "bg-white border-guesty-beige text-guesty-forest/60 hover:border-guesty-nature/50"
+                                : "bg-white border-guesty-beige text-guesty-forest/60 hover:border-guesty-nature/50 disabled:opacity-30"
                             }`}
                           >
                             {opt.label}
                           </button>
                         ))}
                       </div>
+                      
+                      {!canUseAfter && selectedCourseIds.length > 1 && position === 'after' && (
+                        <div className="flex items-start gap-2 p-3 bg-guesty-ice/50 rounded-xl border border-guesty-beige/30">
+                          <Info className="w-4 h-4 text-guesty-ocean flex-shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-guesty-forest/60 leading-relaxed">
+                            "After Specific Item" is only available when a single course is selected. Defaulting to End of Course.
+                          </p>
+                        </div>
+                      )}
                     </div>
 
-                    {position === 'after' && selectedCourse && (
+                    {position === 'after' && canUseAfter && selectedCourse && (
                       <motion.div 
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -168,20 +215,20 @@ const AssignToCourseModal: React.FC<AssignToCourseModalProps> = ({
               </AnimatePresence>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={onClose}
-                  className="flex-1 py-4 rounded-[16px] font-bold text-sm text-guesty-forest hover:bg-guesty-ice/50 transition-all"
+                  className="flex-1 py-4 rounded-[16px] font-bold text-sm text-guesty-forest hover:bg-guesty-ice/50 transition-all font-sans"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAssign}
-                  disabled={!selectedCourseId || (position === 'after' && !relativeToId)}
-                  className="flex-[2] py-4 bg-guesty-nature text-white rounded-[16px] font-bold text-sm hover:bg-guesty-forest shadow-lg shadow-guesty-nature/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={selectedCourseIds.length === 0 || (position === 'after' && !relativeToId)}
+                  className="flex-[2] py-4 bg-guesty-nature text-white rounded-[16px] font-bold text-sm hover:bg-guesty-forest shadow-lg shadow-guesty-nature/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-sans"
                 >
                   <Plus className="w-5 h-5" />
-                  Assign to Course
+                  Assign to Courses
                 </button>
               </div>
             </>
