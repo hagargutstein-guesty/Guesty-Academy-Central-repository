@@ -5,15 +5,76 @@ import {
   Compass, Home, Users, BarChart3, Settings, Plus, Edit2, Archive,
   FileVideo, FileText, HelpCircle, RefreshCw, Layers, Info, X, Check, Database,
   ArrowRight, ArrowLeft, Globe, FileArchive, UploadCloud, Package,
-  Play, Pause, SkipForward, SkipBack, MonitorPlay, ListChecks, Video, ArchiveRestore, History, ChevronDown, ExternalLink, ChevronLeft,
+  Play, Pause, SkipForward, SkipBack, MonitorPlay, ListChecks, Video, ArchiveRestore, History, ChevronDown, ChevronUp, ExternalLink, ChevronLeft,
   Shield, UserCheck, UserCog, Filter, Download, MoreVertical, Activity, GitMerge, Eye, Trash2, Mail, Key, ShieldAlert, LockKeyhole, UserPlus, ListTree, Link, Briefcase,
   Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
-import { FileItem, Folder, AssessmentAttempt, Group, Course } from './types';
+import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse } from './types';
 import { ROOT_FOLDERS } from './constants';
+import { cn } from './lib/utils';
+import { ContinueLearningCarousel } from './components/ContinueLearningCarousel';
+import { NavigationGrid } from './components/NavigationGrid';
 
 // --- MOCK DATA ---
+const activeLearningPlans: LearningPlan[] = [
+  {
+    id: 'lp1',
+    title: 'Data Science Fundamentals',
+    progress: 75,
+    totalCourses: 4,
+    courses: [
+      { id: 'c1', title: 'Python for Data Science', status: 'Completed' },
+      { id: 'c2', title: 'Data Visualization Basics', status: 'Completed' },
+      { id: 'c3', title: 'Statistical Inference', status: 'In-Progress' },
+      { id: 'c4', title: 'Machine Learning Intro', status: 'Locked' },
+    ]
+  },
+  {
+    id: 'lp2',
+    title: 'Leadership & Management',
+    progress: 20,
+    totalCourses: 5,
+    courses: [
+      { id: 'l1', title: 'Effective Communication', status: 'Completed' },
+      { id: 'l2', title: 'Conflict Resolution', status: 'In-Progress' },
+      { id: 'l3', title: 'Strategic Planning', status: 'Locked' },
+      { id: 'l4', title: 'Team Building', status: 'Locked' },
+      { id: 'l5', title: 'Performance Reviews', status: 'Locked' },
+    ]
+  }
+];
+
+const recommendedLearningPlans: LearningPlan[] = [
+  {
+    id: 'rp1',
+    title: 'Advanced Engineering',
+    progress: 0,
+    totalCourses: 6,
+    courses: [],
+    image: 'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&q=80&w=400&h=250',
+    category: 'Engineering'
+  },
+  {
+    id: 'rp2',
+    title: 'Product Management 101',
+    progress: 0,
+    totalCourses: 3,
+    courses: [],
+    image: 'https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d?auto=format&fit=crop&q=80&w=400&h=250',
+    category: 'Product'
+  },
+  {
+    id: 'rp3',
+    title: 'Sales Mastery 2026',
+    progress: 0,
+    totalCourses: 4,
+    courses: [],
+    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=400&h=250',
+    category: 'Sales'
+  }
+];
+
 const learningPath = [
   { id: 1, title: 'Company Onboarding', status: 'completed', type: 'E-Learning', duration: '2h', score: '100%' },
   { id: 2, title: 'Data Security Basics', status: 'completed', type: 'E-Learning', duration: '1h', score: '85%' },
@@ -50,6 +111,7 @@ const initialCourses = [
     ],
     enrollmentRule: 'Self-Enroll',
     progress: 75,
+    belongsToPlan: true,
     enrollmentType: 'Auto',
     enrollmentRequested: false,
     modules: [
@@ -76,6 +138,7 @@ const initialCourses = [
     ],
     enrollmentRule: 'View Only',
     progress: 0,
+    belongsToPlan: true,
     enrollmentType: 'Manual',
     enrollmentRequested: false,
     modules: [
@@ -95,6 +158,7 @@ const initialCourses = [
     visibilityRule: 'Public',
     enrollmentRule: 'Self-Enroll',
     progress: 0,
+    belongsToPlan: false,
     enrollmentType: 'Auto',
     enrollmentRequested: false,
     modules: [
@@ -113,6 +177,7 @@ const initialCourses = [
     visibilityRule: 'Public',
     enrollmentRule: 'Self-Enroll',
     progress: 100,
+    belongsToPlan: false,
     enrollmentType: 'Auto',
     enrollmentRequested: false,
     modules: [
@@ -133,7 +198,8 @@ const initialCourses = [
     duration: '8h', language: 'English', category: 'Soft Skills', tags: ['Leadership', 'Management'], format: 'E-learning', difficulty: 'Intermediate', isPinned: false, visibility: ['All Employees'],
     visibilityRule: 'Restricted',
     enrollmentRule: 'View Only',
-    progress: 0,
+    progress: 20,
+    belongsToPlan: true,
     enrollmentType: 'Manual',
     enrollmentRequested: false,
     modules: [
@@ -141,6 +207,39 @@ const initialCourses = [
       { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
       { id: 'm16', title: 'Handling Difficult Conversations', type: 'SCORM', version: 'v1.0' },
     ] 
+  },
+  { 
+    id: 'c6', title: 'Cybersecurity Awareness', audience: 'Internal (All)', status: 'Published', lastUpdated: '3 days ago', enrolledGroups: ['All Employees'], enrolledSites: ['Guesty Internal'], 
+    thumbnail: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=400&h=250',
+    description: 'Learn how to stay safe from cyber threats.',
+    learningObjectives: ['Identify phishing', 'Password best practices'],
+    duration: '2h', language: 'English', category: 'Security', tags: ['Security'], format: 'E-learning', difficulty: 'Beginner', isPinned: false, visibility: ['All Employees'],
+    visibilityRule: 'Public',
+    progress: 45,
+    belongsToPlan: false,
+    modules: [] 
+  },
+  { 
+    id: 'c7', title: 'AI in Hospitality', audience: 'Internal (All)', status: 'Published', lastUpdated: '1 day ago', enrolledGroups: ['All Employees'], enrolledSites: ['Guesty Internal'], 
+    thumbnail: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=400&h=250',
+    description: 'How AI is transforming the hospitality industry.',
+    learningObjectives: ['Current AI trends', 'Practical applications'],
+    duration: '3h', language: 'English', category: 'Technical', tags: ['AI'], format: 'Video', difficulty: 'Intermediate', isPinned: false, visibility: ['All Employees'],
+    visibilityRule: 'Public',
+    progress: 60,
+    belongsToPlan: false,
+    modules: [] 
+  },
+  { 
+    id: 'c8', title: 'Effective Communication', audience: 'Internal (All)', status: 'Published', lastUpdated: '5 days ago', enrolledGroups: ['All Employees'], enrolledSites: ['Guesty Internal'], 
+    thumbnail: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&q=80&w=400&h=250',
+    description: 'Master the art of workplace communication.',
+    learningObjectives: ['Active listening', 'Clear messaging'],
+    duration: '2h', language: 'English', category: 'Soft Skills', tags: ['Soft Skills'], format: 'E-learning', difficulty: 'Beginner', isPinned: false, visibility: ['All Employees'],
+    visibilityRule: 'Public',
+    progress: 30,
+    belongsToPlan: false,
+    modules: [] 
   },
 ];
 
@@ -402,6 +501,13 @@ export default function App() {
     return 'admin';
   });
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [expandedPlans, setExpandedPlans] = useState<string[]>([]);
+
+  const togglePlan = (id: string) => {
+    setExpandedPlans(prev => 
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  };
   
   // Helper to init state from localStorage or fallback
   const getInitialState = (key: string, fallback: any) => {
@@ -696,7 +802,7 @@ export default function App() {
         primary: 'bg-guesty-lemon',
         primaryHover: 'hover:bg-[#d5e8b0]',
         textPrimary: 'text-guesty-forest',
-        accent: 'border-guesty-lemon',
+        accent: 'border-guesty-emerald',
         userRole: 'Employee (Data Scientist)',
         bannerBg: 'bg-guesty-forest',
         bannerShape1: 'bg-guesty-nature',
@@ -704,7 +810,9 @@ export default function App() {
         pathActiveBg: 'bg-guesty-lemon',
         pathActiveText: 'text-guesty-forest',
         pathCompletedBg: 'bg-guesty-nature',
-        pathCompletedText: 'text-white'
+        pathCompletedText: 'text-white',
+        journeyAccent: 'text-guesty-emerald',
+        journeyProgress: 'bg-guesty-emerald'
       }
     : environment === 'external' 
     ? {
@@ -715,7 +823,7 @@ export default function App() {
         primary: 'bg-guesty-coral',
         primaryHover: 'hover:bg-[#e5756c]',
         textPrimary: 'text-guesty-night',
-        accent: 'border-guesty-coral',
+        accent: 'border-guesty-ocean',
         userRole: 'External Partner',
         bannerBg: 'bg-guesty-night',
         bannerShape1: 'bg-guesty-ocean',
@@ -723,7 +831,9 @@ export default function App() {
         pathActiveBg: 'bg-guesty-coral',
         pathActiveText: 'text-guesty-night',
         pathCompletedBg: 'bg-guesty-ocean',
-        pathCompletedText: 'text-white'
+        pathCompletedText: 'text-white',
+        journeyAccent: 'text-guesty-ocean',
+        journeyProgress: 'bg-guesty-ocean'
       }
     : {
         name: 'Guesty Admin',
@@ -741,7 +851,9 @@ export default function App() {
         pathActiveBg: 'bg-guesty-teal',
         pathActiveText: 'text-guesty-black',
         pathCompletedBg: 'bg-guesty-forest',
-        pathCompletedText: 'text-white'
+        pathCompletedText: 'text-white',
+        journeyAccent: 'text-guesty-teal',
+        journeyProgress: 'bg-guesty-teal'
       };
 
   const learnerNav = [
@@ -1653,96 +1765,181 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Learning Journey Visualization */}
+              {/* Learning Journey section */}
               <div>
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-2xl font-bold text-guesty-black flex items-center gap-3">
-                    <Compass className={`w-7 h-7 ${theme.textPrimary}`} /> 
+                    <Compass className={`w-7 h-7 ${theme.journeyAccent}`} /> 
                     Your Learning Journey
                   </h3>
-                  <span className="text-sm font-bold text-guesty-forest bg-guesty-ice/50 px-4 py-1.5 rounded-[8px]">Data Science Track</span>
+                  {activeLearningPlans.length > 0 && (
+                    <span className={`text-sm font-bold bg-white border border-guesty-beige ${theme.journeyAccent} px-4 py-1.5 rounded-[8px]`}>
+                      {activeLearningPlans.length} Active Plans
+                    </span>
+                  )}
                 </div>
                 
-                <div className="bg-white rounded-[36px] border border-guesty-beige shadow-sm p-10">
-                  <div className="relative">
-                    {/* Connecting Line */}
-                    <div className="absolute left-[31px] top-10 bottom-10 w-1 bg-guesty-beige rounded-full z-0"></div>
-                    <div className={`absolute left-[31px] top-10 h-[50%] w-1 rounded-full z-0 transition-colors duration-500 ${theme.pathActiveBg}`}></div>
-
-                    <div className="space-y-10 relative z-10">
-                      {learningPath.map((step, index) => (
-                        <div key={step.id} className="flex gap-8 group">
-                          {/* Status Icon */}
-                          <div className="flex-shrink-0 mt-1">
-                            {step.status === 'completed' && (
-                              <div className={`w-16 h-16 rounded-[16px] flex items-center justify-center shadow-sm transition-colors duration-500 ${theme.pathCompletedBg} ${theme.pathCompletedText}`}>
-                                <CheckCircle className="w-7 h-7" />
-                              </div>
-                            )}
-                            {step.status === 'active' && (
-                              <div className={`w-16 h-16 rounded-[16px] flex items-center justify-center shadow-md ring-4 ring-white transition-colors duration-500 ${theme.pathActiveBg} ${theme.pathActiveText}`}>
-                                <PlayCircle className="w-7 h-7" />
-                              </div>
-                            )}
-                            {step.status === 'locked' && (
-                              <div className="w-16 h-16 rounded-[16px] flex items-center justify-center bg-guesty-beige/50 text-guesty-forest/30 shadow-sm">
-                                <Lock className="w-6 h-6" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Content Card */}
-                          <div className={`flex-1 rounded-[24px] border p-6 transition-all duration-300 ${
-                            step.status === 'active' ? `border-guesty-forest/20 bg-white shadow-md scale-[1.02]` : 
-                            step.status === 'completed' ? 'border-guesty-beige bg-guesty-cream/50 hover:bg-guesty-cream' : 
-                            'border-guesty-beige/50 bg-guesty-cream/30 opacity-75'
-                          }`}>
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                              <div>
-                                <div className="flex items-center gap-3 mb-2">
-                                  <span className={`text-xs font-bold uppercase tracking-widest ${
-                                    step.status === 'completed' ? 'text-guesty-nature' :
-                                    step.status === 'active' ? theme.textPrimary :
-                                    'text-guesty-forest/40'
-                                  }`}>
-                                    {step.status === 'completed' ? 'Completed' : step.status === 'active' ? 'In Progress' : 'Locked'}
-                                  </span>
-                                  <span className="text-xs font-bold text-guesty-forest/60 flex items-center gap-1.5">
-                                    <Clock className="w-3.5 h-3.5" /> {step.duration}
-                                  </span>
-                                  <span className="text-xs font-bold text-guesty-forest/60 bg-guesty-beige px-2.5 py-1 rounded-[6px]">
-                                    {step.type}
-                                  </span>
-                                </div>
-                                <h4 className={`text-xl font-bold ${step.status === 'locked' ? 'text-guesty-forest/50' : 'text-guesty-black'}`}>
-                                  {step.title}
-                                </h4>
-                              </div>
-
-                              {step.status === 'active' && (
-                                <div className="w-full md:w-56">
-                                  <div className="flex justify-between text-xs font-bold mb-2 uppercase tracking-widest">
-                                    <span className={theme.textPrimary}>Progress</span>
-                                    <span className="text-guesty-black font-display">{step.progress}%</span>
-                                  </div>
-                                  <div className="h-2.5 w-full bg-guesty-beige rounded-full overflow-hidden">
-                                    <div className={`h-full rounded-full transition-colors duration-500 ${theme.pathActiveBg}`} style={{ width: `${step.progress}%` }}></div>
+                {activeLearningPlans.length > 0 ? (
+                  <div className="space-y-4">
+                    {activeLearningPlans.map((plan) => {
+                      const isExpanded = expandedPlans.includes(plan.id);
+                      return (
+                        <div key={plan.id} className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden transition-all duration-300">
+                          {/* Accordion Header */}
+                          <button 
+                            onClick={() => togglePlan(plan.id)}
+                            className="w-full p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 text-left hover:bg-guesty-cream/30 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <h4 className="text-xl font-bold text-guesty-black mb-3">{plan.title}</h4>
+                              <div className="flex items-center gap-4">
+                                <div className="flex-1 h-2 bg-guesty-beige rounded-full max-w-xs overflow-hidden shadow-inner">
+                                  <div 
+                                    className={`h-full rounded-full transition-all duration-1000 ease-out relative ${
+                                      plan.progress === 100 ? 'bg-guesty-nature' : 
+                                      plan.progress === 0 ? 'bg-guesty-forest/20' : 
+                                      theme.journeyProgress
+                                    }`} 
+                                    style={{ width: `${plan.progress}%` }}
+                                  >
+                                    {plan.progress > 0 && plan.progress < 100 && (
+                                      <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                                    )}
                                   </div>
                                 </div>
-                              )}
-
-                              {step.status === 'completed' && (
-                                <div className="flex items-center gap-2 text-sm font-bold text-guesty-black bg-white px-4 py-2 rounded-[12px] border border-guesty-beige shadow-sm">
-                                  Score: <span className="text-guesty-nature font-display text-lg">{step.score}</span>
-                                </div>
-                              )}
+                                <span className={cn(
+                                  "text-sm font-bold",
+                                  plan.progress === 100 ? "text-guesty-nature" : theme.journeyAccent
+                                )}>{plan.progress}%</span>
+                              </div>
                             </div>
+                            
+                            <div className="flex items-center gap-6">
+                              <div className="text-right">
+                                <p className="text-[10px] font-bold text-guesty-forest/40 uppercase tracking-widest mb-1">Total Courses</p>
+                                <p className="text-lg font-bold text-guesty-black">{plan.totalCourses}</p>
+                              </div>
+                              <div className={`p-2 rounded-full transition-all duration-300 ${isExpanded ? 'bg-guesty-nature text-white rotate-0' : `bg-guesty-cream ${theme.journeyAccent}`}`}>
+                                {isExpanded ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
+                              </div>
+                            </div>
+                          </button>
+                          
+                          {/* Accordion Content */}
+                          {isExpanded && (
+                            <div className="px-8 pb-8 animate-in slide-in-from-top-2 duration-300">
+                              <div className="h-px bg-guesty-beige mb-6"></div>
+                              <div className="space-y-3">
+                                {plan.courses.map((course) => (
+                                  <button 
+                                    key={course.id} 
+                                    onClick={() => {
+                                      if (course.status !== 'Locked') {
+                                        setActiveCourseId(course.id);
+                                        setActiveTab('course-player');
+                                      }
+                                    }}
+                                    disabled={course.status === 'Locked'}
+                                    className={cn(
+                                      "w-full flex items-center justify-between p-4 rounded-[16px] border transition-all group",
+                                      course.status === 'Completed' ? "bg-guesty-nature/[0.02] border-guesty-nature/10 hover:border-guesty-nature/30" :
+                                      course.status === 'In-Progress' ? "bg-white border-guesty-beige hover:border-guesty-nature hover:shadow-md" :
+                                      "bg-guesty-ice/10 border-transparent opacity-60 cursor-not-allowed"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-4">
+                                      <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center transition-all ${
+                                        course.status === 'Completed' ? 'bg-guesty-nature text-white' :
+                                        course.status === 'In-Progress' ? `${theme.journeyProgress} text-white group-hover:scale-110` :
+                                        'bg-guesty-beige text-guesty-forest/30'
+                                      }`}>
+                                        {course.status === 'Completed' ? <CheckCircle2 className="w-6 h-6 text-white" /> :
+                                         course.status === 'In-Progress' ? <PlayCircle className="w-6 h-6 text-white" /> :
+                                         <Lock className="w-5 h-5" />}
+                                      </div>
+                                      <div className="text-left">
+                                        <h5 className={cn(
+                                          "font-bold transition-colors",
+                                          course.status === 'Locked' ? "text-guesty-forest/40" : "text-guesty-black group-hover:text-guesty-nature"
+                                        )}>
+                                          {course.title}
+                                        </h5>
+                                        <span className={cn(
+                                          "text-[10px] font-black uppercase tracking-widest",
+                                          course.status === 'Completed' ? "text-guesty-nature" :
+                                          course.status === 'In-Progress' ? theme.journeyAccent :
+                                          "text-guesty-forest/40"
+                                        )}>
+                                          {course.status}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {course.status === 'In-Progress' && (
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-guesty-nature bg-guesty-nature/5 px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                          Continue
+                                        </span>
+                                      )}
+                                      {course.status !== 'Locked' && (
+                                        <ChevronRight className="w-5 h-5 text-guesty-forest/20 group-hover:text-guesty-nature group-hover:translate-x-1 transition-all" />
+                                      )}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div>
+                    <h4 className="text-lg font-bold text-guesty-forest/60 mb-6 font-display text-center italic">No currently active plans? Explore our library:</h4>
+                    <h4 className="text-xl font-bold text-guesty-black mb-6">Recommended Learning Plans</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {recommendedLearningPlans.map((plan) => (
+                        <div key={plan.id} className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden group hover:shadow-md transition-all">
+                          <div className="h-40 relative overflow-hidden">
+                            <img src={plan.image} alt={plan.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute top-4 left-4">
+                              <span className="bg-white/90 backdrop-blur-sm text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full text-guesty-forest">
+                                {plan.category}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="p-6">
+                            <h5 className="text-lg font-bold text-guesty-black mb-2">{plan.title}</h5>
+                            <p className="text-sm text-guesty-forest/60 mb-6">{plan.totalCourses} expert-led courses</p>
+                            <button className={`w-full py-3 rounded-[12px] font-bold border-2 ${theme.journeyAccent} ${theme.accent.replace('border-', 'border-')} hover:bg-guesty-cream transition-colors text-sm`}>
+                              Enroll in Plan
+                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Continue Learning Carousel */}
+                <ContinueLearningCarousel 
+                  courses={courses.filter(c => 
+                    c.progress !== undefined && 
+                    c.progress > 0 && 
+                    c.progress < 100 && 
+                    (c.belongsToPlan === false || c.belongsToPlan === undefined)
+                  )}
+                  onCourseClick={(courseId) => {
+                    setActiveCourseId(courseId);
+                    setActiveTab('course-player');
+                  }}
+                  themeAccent={theme.journeyAccent}
+                />
+
+                {/* Quick Navigation Grid Area */}
+                <section>
+                  <NavigationGrid onNavigate={(tabId) => setActiveTab(tabId)} />
+                </section>
               </div>
 
             </div>

@@ -126,6 +126,8 @@ export interface Course {
   visibilityRule?: 'Public' | 'Restricted';
   accessRules?: AccessRule[];
   modules: CourseModule[];
+  progress?: number; // 0-100
+  belongsToPlan?: boolean;
 }
 
 export interface AssessmentAttempt {
@@ -153,4 +155,21 @@ export interface Assessment {
   answer_key_url?: string; // Google Drive link for instructors
   settings: AssessmentSettings;
   questions: Question[];
+}
+
+export interface LearningPlanCourse {
+  id: string;
+  title: string;
+  status: 'Completed' | 'In-Progress' | 'Locked';
+}
+
+export interface LearningPlan {
+  id: string;
+  title: string;
+  progress: number;
+  totalCourses: number;
+  courses: LearningPlanCourse[];
+  isRecommended?: boolean;
+  image?: string;
+  category?: string;
 }
