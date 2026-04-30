@@ -7,7 +7,7 @@ import {
   ArrowRight, ArrowLeft, Globe, FileArchive, UploadCloud, Package,
   Play, Pause, SkipForward, SkipBack, MonitorPlay, ListChecks, Video, ArchiveRestore, History, ChevronDown, ChevronUp, ExternalLink, ChevronLeft,
   Shield, UserCheck, UserCog, Filter, Download, MoreVertical, Activity, GitMerge, Eye, Trash2, Mail, Key, ShieldAlert, LockKeyhole, UserPlus, ListTree, Link, Briefcase,
-  Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle
+  Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle, Image
 } from 'lucide-react';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
 import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse } from './types';
@@ -15,6 +15,7 @@ import { ROOT_FOLDERS } from './constants';
 import { cn } from './lib/utils';
 import { ContinueLearningCarousel } from './components/ContinueLearningCarousel';
 import { NavigationGrid } from './components/NavigationGrid';
+import { CourseThumbnail } from './components/CourseThumbnail';
 
 // --- MOCK DATA ---
 const activeLearningPlans: LearningPlan[] = [
@@ -102,7 +103,7 @@ const initialCourses = [
     description: 'A comprehensive onboarding program for new hires joining the Data Team.',
     learningObjectives: ['Understand company culture', 'Learn data security basics', 'Setup development environment'],
     instructors: ['Jane Doe', 'John Smith'],
-    duration: '4h', language: 'English', category: 'Mandatory', tags: ['Onboarding', 'Culture'], format: 'E-learning', difficulty: 'Beginner', isPinned: true, visibility: ['New Hires Q1', 'Data Team'],
+    duration: '4h', language: 'English', category: 'Onboarding', tags: ['Onboarding', 'Culture'], format: 'E-learning', difficulty: 'Beginner', isPinned: true, visibility: ['New Hires Q1', 'Data Team'],
     visibilityRule: 'Restricted',
     publicVisibility: false,
     accessRules: [
@@ -114,6 +115,7 @@ const initialCourses = [
     belongsToPlan: true,
     enrollmentType: 'Auto',
     enrollmentRequested: false,
+    useDynamicThumbnail: true,
     modules: [
       { id: 'm1', title: 'Welcome to Guesty', type: 'Video', version: 'v1.0' },
       { id: 'a1', assetId: 'a1', title: 'Data Security Basics', type: 'SCORM', version: 'v1.0' },
@@ -129,7 +131,7 @@ const initialCourses = [
     description: 'Deep dive into advanced data modeling techniques and best practices.',
     learningObjectives: ['Master dimensional modeling', 'Optimize query performance', 'Design scalable data warehouses'],
     instructors: ['Alice Johnson'],
-    duration: '6h', language: 'English', category: 'Technical', tags: ['Data', 'Engineering'], format: 'SCORM', difficulty: 'Advanced', isPinned: false, visibility: ['Data Team', 'Engineering'],
+    duration: '6h', language: 'English', category: 'Product Education', tags: ['Data', 'Engineering'], format: 'SCORM', difficulty: 'Advanced', isPinned: false, visibility: ['Data Team', 'Engineering'],
     visibilityRule: 'Restricted',
     publicVisibility: true,
     accessRules: [
@@ -141,6 +143,7 @@ const initialCourses = [
     belongsToPlan: true,
     enrollmentType: 'Manual',
     enrollmentRequested: false,
+    useDynamicThumbnail: true,
     modules: [
       { id: 'm5', title: 'Dimensional Modeling Deep Dive', type: 'SCORM', version: 'v1.0' },
       { id: 'a2', assetId: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1' },
@@ -154,13 +157,14 @@ const initialCourses = [
     description: 'Onboarding for new partners joining the Guesty ecosystem.',
     learningObjectives: ['Understand partner portal', 'Learn API basics', 'Support procedures'],
     instructors: ['Partner Success Team'],
-    duration: '2h', language: 'English', category: 'Soft Skills', tags: ['Partners', 'Onboarding'], format: 'Video', difficulty: 'Intermediate', isPinned: false, visibility: ['All Partners'],
+    duration: '2h', language: 'English', category: 'Onboarding', tags: ['Partners', 'Onboarding'], format: 'Video', difficulty: 'Intermediate', isPinned: false, visibility: ['All Partners'],
     visibilityRule: 'Public',
     enrollmentRule: 'Self-Enroll',
     progress: 0,
     belongsToPlan: false,
     enrollmentType: 'Auto',
     enrollmentRequested: false,
+    useDynamicThumbnail: true,
     modules: [
       { id: 'm8', title: 'Introduction to the Partner Portal', type: 'Video', version: 'v1.0' },
       { id: 'm9', title: 'API Integration Basics', type: 'Video', version: 'v1.0' },
@@ -173,13 +177,14 @@ const initialCourses = [
     description: 'Annual compliance training for all employees.',
     learningObjectives: ['Review code of conduct', 'Understand data privacy policies', 'Workplace safety'],
     instructors: ['HR Department'],
-    duration: '1h', language: 'English', category: 'Compliance', tags: ['Mandatory', 'HR'], format: 'Assessment', difficulty: 'Beginner', isPinned: true, visibility: ['All Employees'],
+    duration: '1h', language: 'English', category: 'Guesty', tags: ['Mandatory', 'HR'], format: 'Assessment', difficulty: 'Beginner', isPinned: true, visibility: ['All Employees'],
     visibilityRule: 'Public',
     enrollmentRule: 'Self-Enroll',
     progress: 100,
     belongsToPlan: false,
     enrollmentType: 'Auto',
     enrollmentRequested: false,
+    useDynamicThumbnail: true,
     modules: [
       { id: 'm11', title: 'Code of Conduct Review', type: 'SCORM', version: 'v1.0' },
       { id: 'a1', assetId: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0' },
@@ -202,6 +207,7 @@ const initialCourses = [
     belongsToPlan: true,
     enrollmentType: 'Manual',
     enrollmentRequested: false,
+    useDynamicThumbnail: true,
     modules: [
       { id: 'm15', title: 'Communication Strategies', type: 'Video', version: 'v1.0' },
       { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
@@ -217,6 +223,7 @@ const initialCourses = [
     visibilityRule: 'Public',
     progress: 45,
     belongsToPlan: false,
+    useDynamicThumbnail: true,
     modules: [] 
   },
   { 
@@ -228,6 +235,7 @@ const initialCourses = [
     visibilityRule: 'Public',
     progress: 60,
     belongsToPlan: false,
+    useDynamicThumbnail: true,
     modules: [] 
   },
   { 
@@ -239,6 +247,7 @@ const initialCourses = [
     visibilityRule: 'Public',
     progress: 30,
     belongsToPlan: false,
+    useDynamicThumbnail: true,
     modules: [] 
   },
 ];
@@ -535,13 +544,15 @@ export default function App() {
     title: '',
     description: '',
     type: 'E-learning',
+    audience: environment === 'internal' ? 'Internal' : 'External',
     language: 'English',
     isSequential: false,
     saveAsTemplate: false,
     availability: 'Always',
     visibility: 'All Users',
     learningPlans: [] as string[],
-    status: 'Under Maintenance'
+    status: 'Under Maintenance',
+    category: 'Guesty'
   });
   
   const [repository, setRepository] = useState<FileItem[]>(() => getInitialState('guesty_repository', initialRepository));
@@ -1744,7 +1755,7 @@ export default function App() {
                     Welcome back, <span className="font-serif italic font-normal text-guesty-ice">{impersonatingUser ? impersonatingUser.name.split(' ')[0] : 'Mor'}</span>.
                   </h2>
                   <p className="text-lg opacity-90 mb-8 font-light leading-relaxed">
-                    You're making great progress. Continue your journey to master your property management skills.
+                    Continue your journey to master your property management skills.
                   </p>
                   <button onClick={() => setActiveTab('course-player')} className={`${theme.primary} ${theme.textPrimary} ${theme.primaryHover} px-8 py-4 rounded-[12px] font-bold transition-colors flex items-center gap-2 shadow-sm`}>
                     <PlayCircle className="w-5 h-5" /> Resume Learning
@@ -1897,11 +1908,6 @@ export default function App() {
                         <div key={plan.id} className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden group hover:shadow-md transition-all">
                           <div className="h-40 relative overflow-hidden">
                             <img src={plan.image} alt={plan.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                            <div className="absolute top-4 left-4">
-                              <span className="bg-white/90 backdrop-blur-sm text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full text-guesty-forest">
-                                {plan.category}
-                              </span>
-                            </div>
                           </div>
                           <div className="p-6">
                             <h5 className="text-lg font-bold text-guesty-black mb-2">{plan.title}</h5>
@@ -3510,19 +3516,50 @@ export default function App() {
                                 className="w-full px-4 py-2 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-ocean outline-none"
                               />
                             </div>
-                            <div>
-                              <label className="block text-sm font-bold text-guesty-black mb-1">Thumbnail URL</label>
-                              <input 
-                                type="text" 
-                                value={activeCourse.thumbnail || ''}
-                                onChange={(e) => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, thumbnail: e.target.value } : c))}
-                                className="w-full px-4 py-2 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-ocean outline-none"
-                              />
-                              {activeCourse.thumbnail && (
-                                <div className="mt-2 h-32 w-48 rounded-[8px] overflow-hidden border border-guesty-beige">
-                                  <img src={activeCourse.thumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Image className="w-4 h-4 text-guesty-forest/40" />
+                                <h4 className="text-sm font-bold text-guesty-forest/60 uppercase tracking-widest">Course Template</h4>
+                              </div>
+                              
+                              <div className="p-4 bg-guesty-cream/10 border border-guesty-beige rounded-[24px] shadow-sm space-y-6">
+                                <div className="grid grid-cols-4 gap-2">
+                                  {[
+                                    { name: 'Soft Skills', bg: '#5C1E3A' },
+                                    { name: 'Product Education', bg: '#0D332D' },
+                                    { name: 'Onboarding', bg: '#536DDE' },
+                                    { name: 'Guesty', bg: '#3C4858' },
+                                    { name: 'ILT', bg: '#E68A7B' },
+                                    { name: 'GLite', bg: '#82B5B2' },
+                                    { name: 'GPro + Processes', bg: '#136353' }
+                                  ].map((cat, index) => (
+                                    <button
+                                      key={cat.name}
+                                      onClick={() => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, category: cat.name } : c))}
+                                      className={cn(
+                                        "px-2 py-1.5 rounded-[12px] text-[10px] font-bold text-left transition-all border flex items-center gap-2",
+                                        activeCourse.category === cat.name 
+                                          ? "bg-guesty-forest text-white border-guesty-forest shadow-sm" 
+                                          : "bg-white text-guesty-forest border-guesty-beige hover:border-guesty-ocean hover:bg-guesty-cream/50"
+                                      )}
+                                    >
+                                      <div className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5" style={{ backgroundColor: cat.bg }} />
+                                      <span className="truncate">{cat.name}</span>
+                                    </button>
+                                  ))}
                                 </div>
-                              )}
+                                
+                                <div className="pt-2 border-t border-guesty-beige/50">
+                                  <div className="w-full max-w-sm mx-auto">
+                                    <CourseThumbnail 
+                                      title={activeCourse.title} 
+                                      audience={activeCourse.audience} 
+                                      status={activeCourse.status} 
+                                      category={activeCourse.category}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                             <div>
                               <label className="block text-sm font-bold text-guesty-black mb-1">Enrollment Type</label>
@@ -4044,7 +4081,6 @@ export default function App() {
                     </button>
                     <div className="absolute bottom-6 left-8 right-8 text-white">
                       <div className="flex items-center gap-3 mb-3">
-                        <span className="bg-guesty-ocean px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">{selectedCatalogCourse.category}</span>
                         <span className="flex items-center gap-1 text-sm"><BookOpen className="w-4 h-4" /> {selectedCatalogCourse.format}</span>
                         <span className="flex items-center gap-1 text-sm"><Clock className="w-4 h-4" /> {selectedCatalogCourse.duration}</span>
                         <span className="flex items-center gap-1 text-sm"><Globe className="w-4 h-4" /> {selectedCatalogCourse.language}</span>
@@ -4165,10 +4201,13 @@ export default function App() {
                         className="bg-white border border-guesty-beige text-guesty-black text-sm font-bold rounded-[12px] focus:ring-guesty-forest focus:border-guesty-forest block p-3 outline-none shadow-sm"
                       >
                         <option value="All Categories">All Categories</option>
-                        <option value="Mandatory">Mandatory</option>
-                        <option value="Technical">Technical</option>
                         <option value="Soft Skills">Soft Skills</option>
-                        <option value="Compliance">Compliance</option>
+                        <option value="Product Education">Product Education</option>
+                        <option value="Onboarding">Onboarding</option>
+                        <option value="Guesty">Guesty</option>
+                        <option value="ILT">ILT</option>
+                        <option value="GLite">GLite</option>
+                        <option value="GPro + Processes">GPro + Processes</option>
                       </select>
                       <select 
                         value={catalogFormat}
@@ -4220,14 +4259,21 @@ export default function App() {
                               </div>
                             )}
                             <div className="h-48 overflow-hidden relative rounded-[16px]">
-                              <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
+                              {course.useDynamicThumbnail ? (
+                                <CourseThumbnail 
+                                  title={course.title} 
+                                  audience={course.audience} 
+                                  status={course.status}
+                                  category={course.category}
+                                  className="h-full"
+                                />
+                              ) : (
+                                <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
+                              )}
                               <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                 <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
                                   <PlayCircle className="w-5 h-5" /> {course.progress && course.progress > 0 ? 'Continue' : 'Start Course'}
                                 </button>
-                              </div>
-                              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-[8px] text-xs font-bold text-guesty-black shadow-sm uppercase tracking-widest">
-                                {course.category}
                               </div>
                             </div>
                             <div className="p-5 flex flex-col flex-1">
@@ -4303,14 +4349,21 @@ export default function App() {
                     }).map((course) => (
                       <div key={course.id} className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col p-2">
                         <div className="h-48 overflow-hidden relative rounded-[16px]">
-                          <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
+                          {course.useDynamicThumbnail ? (
+                            <CourseThumbnail 
+                              title={course.title} 
+                              audience={course.audience} 
+                              status={course.status}
+                              category={course.category}
+                              className="h-full"
+                            />
+                          ) : (
+                            <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
+                          )}
                           <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                             <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
                               <PlayCircle className="w-5 h-5" /> {course.progress && course.progress > 0 ? 'Continue' : 'Start Course'}
                             </button>
-                          </div>
-                          <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-[8px] text-xs font-bold text-guesty-black shadow-sm uppercase tracking-widest">
-                            {course.category}
                           </div>
                         </div>
                         <div className="p-5 flex flex-col flex-1">
@@ -5075,6 +5128,59 @@ export default function App() {
                       </select>
                     </div>
                   </div>
+
+                  <div className="pt-4 border-t border-guesty-beige">
+                    <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-3">Course Template</label>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-2">
+                          {[
+                            { name: 'Soft Skills', bg: '#5C1E3A' },
+                            { name: 'Product Education', bg: '#0D332D' },
+                            { name: 'Onboarding', bg: '#536DDE' },
+                            { name: 'Guesty', bg: '#3C4858' },
+                            { name: 'ILT', bg: '#E68A7B' },
+                            { name: 'GLite', bg: '#82B5B2' },
+                            { name: 'GPro + Processes', bg: '#136353' }
+                          ].map((cat, index) => (
+                            <button
+                              key={cat.name}
+                              onClick={() => setNewCourseData({...newCourseData, category: cat.name})}
+                              className={cn(
+                                "px-3 py-2.5 rounded-[12px] text-[10px] font-bold text-left transition-all border flex items-center justify-between group",
+                                newCourseData.category === cat.name 
+                                  ? "bg-guesty-forest text-white border-guesty-forest shadow-md" 
+                                  : "bg-white text-guesty-forest border-guesty-beige hover:border-guesty-ocean hover:bg-guesty-cream/30"
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: cat.bg }} />
+                                <span className="tracking-tight">{cat.name}</span>
+                              </div>
+                              <div className={cn(
+                                "w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
+                                newCourseData.category === cat.name ? "bg-white border-white" : "border-guesty-beige group-hover:border-guesty-ocean"
+                              )}>
+                                {newCourseData.category === cat.name && <Check className="w-2.5 h-2.5 text-guesty-forest" />}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="relative group">
+                        <div className="absolute -top-2 -left-2 bg-white px-2 py-0.5 rounded-full border border-guesty-beige text-[8px] font-bold text-guesty-forest z-10 shadow-sm uppercase tracking-widest">Preview</div>
+                        <div className="w-full aspect-video rounded-[16px] overflow-hidden border border-guesty-beige shadow-sm scale-95 origin-top-right group-hover:scale-100 transition-transform duration-300">
+                          <CourseThumbnail 
+                            title={newCourseData.title || 'Course Title'} 
+                            audience={newCourseData.audience as 'Internal' | 'External'} 
+                            status="Draft"
+                            category={newCourseData.category}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -5147,7 +5253,14 @@ export default function App() {
                       <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">Audience-Based Visibility</label>
                       <select 
                         value={newCourseData.visibility}
-                        onChange={(e) => setNewCourseData({...newCourseData, visibility: e.target.value})}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewCourseData({
+                            ...newCourseData, 
+                            visibility: val,
+                            audience: val.toLowerCase().includes('external') ? 'External' : 'Internal'
+                          });
+                        }}
                         className="w-full px-4 py-3 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-ocean focus:ring-1 focus:ring-guesty-ocean outline-none transition-all"
                       >
                         <option value="All Users">All Users</option>
@@ -5260,23 +5373,29 @@ export default function App() {
                     const newCourse = {
                       id: `c${courses.length + 1}`,
                       title: newCourseData.title,
-                      audience: newCourseData.visibility,
+                      audience: newCourseData.audience,
                       status: newCourseData.status,
                       lastUpdated: 'Just now',
                       enrolledGroups: [],
                       enrolledSites: [],
                       modules: [],
-                      type: newCourseData.type,
-                      language: newCourseData.language,
-                      isSequential: newCourseData.isSequential,
-                      learningPlans: newCourseData.learningPlans
+                      category: newCourseData.category
                     };
                     setCourses([newCourse, ...courses]);
                     setActiveCourseId(newCourse.id);
                     setNewCourseData({
-                      title: '', description: '', type: 'E-learning', language: 'English',
-                      isSequential: false, saveAsTemplate: false, availability: 'Always',
-                      visibility: 'All Users', learningPlans: [], status: 'Under Maintenance'
+                      title: '', 
+                      description: '', 
+                      type: 'E-learning', 
+                      audience: environment === 'internal' ? 'Internal' : 'External',
+                      language: 'English',
+                      isSequential: false, 
+                      saveAsTemplate: false, 
+                      availability: 'Always',
+                      visibility: 'All Users', 
+                      learningPlans: [], 
+                      status: 'Under Maintenance',
+                      category: 'Guesty'
                     });
                     setCourseWizardStep(1);
                     setShowCourseWizard(false);
@@ -5431,7 +5550,8 @@ export default function App() {
                     lastUpdated: 'Just now',
                     enrolledGroups: [],
                     enrolledSites: [],
-                    modules: parsedScormData.modules
+                    modules: parsedScormData.modules,
+                    useDynamicThumbnail: true
                   };
                   setCourses([newCourse, ...courses]);
                   setActiveCourseId(newCourse.id);

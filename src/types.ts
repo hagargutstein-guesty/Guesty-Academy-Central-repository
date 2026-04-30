@@ -128,6 +128,7 @@ export interface Course {
   modules: CourseModule[];
   progress?: number; // 0-100
   belongsToPlan?: boolean;
+  useDynamicThumbnail?: boolean;
 }
 
 export interface AssessmentAttempt {

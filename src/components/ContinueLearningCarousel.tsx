@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, PlayCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Course } from '../types';
 import { cn } from '../lib/utils';
+import { CourseThumbnail } from './CourseThumbnail';
 
 interface ContinueLearningCarouselProps {
   courses: Course[];
@@ -63,11 +64,21 @@ export const ContinueLearningCarousel: React.FC<ContinueLearningCarouselProps> =
             onClick={() => onCourseClick(course.id)}
           >
             <div className="h-40 relative overflow-hidden">
-              <img 
-                src={course.thumbnail} 
-                alt={course.title} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
+              {course.useDynamicThumbnail ? (
+                <CourseThumbnail 
+                  title={course.title} 
+                  audience={course.audience} 
+                  status={course.status}
+                  category={course.category}
+                  className="rounded-none h-full"
+                />
+              ) : (
+                <img 
+                  src={course.thumbnail} 
+                  alt={course.title} 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              )}
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300">
