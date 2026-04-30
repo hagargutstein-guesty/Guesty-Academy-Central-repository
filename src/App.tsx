@@ -1754,11 +1754,6 @@ export default function App() {
                 {/* Glass effect stat card */}
                 <div className="relative z-10 glass-panel-dark rounded-[24px] p-8 flex items-center gap-8 min-w-[320px] shadow-xl">
                   <div>
-                    <div className="font-display text-7xl font-bold tracking-tighter mb-1">45<span className="text-4xl">%</span></div>
-                    <div className="text-xs font-bold opacity-80 uppercase tracking-widest">Course Progress</div>
-                  </div>
-                  <div className="h-20 w-px bg-white/20"></div>
-                  <div>
                     <div className="text-xs font-bold opacity-80 mb-2 uppercase tracking-widest">Current Module</div>
                     <div className="font-serif italic text-2xl">Advanced Data</div>
                   </div>
