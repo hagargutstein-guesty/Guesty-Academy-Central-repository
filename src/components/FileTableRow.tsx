@@ -1,5 +1,5 @@
 import React from "react";
-import { MoreVertical, FileText, Video, FileArchive, History, Link2, Edit3, Trash2, Archive, BarChart3, Eye, Layers, Globe, Link, FileCode, Tag, HelpCircle } from "lucide-react";
+import { MoreVertical, FileText, Video, FileArchive, History, Link2, Edit3, Trash2, Archive, BarChart3, Eye, Layers, Globe, Link, FileCode, Tag, HelpCircle, Presentation } from "lucide-react";
 import { FileItem } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -56,6 +56,7 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
       case "xAPI": return <FileCode className="w-4 h-4 text-guesty-ocean" />;
       case "HTML": return <Globe className="w-4 h-4 text-guesty-nature" />;
       case "Link": return <Link className="w-4 h-4 text-guesty-ocean" />;
+      case "PPTX": return <Presentation className="w-4 h-4 text-[#A43721]" />;
       case "Assessment": return <HelpCircle className="w-4 h-4 text-guesty-nature" />;
       default: return <FileText className="w-4 h-4 text-guesty-nature" />;
     }

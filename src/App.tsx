@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   BookOpen, Calendar, Award, Search, Bell, 
   PlayCircle, CheckCircle, Lock, Clock, ChevronRight, LayoutDashboard, 
@@ -7,8 +7,10 @@ import {
   ArrowRight, ArrowLeft, Globe, FileArchive, UploadCloud, Package,
   Play, Pause, SkipForward, SkipBack, MonitorPlay, ListChecks, Video, ArchiveRestore, History, ChevronDown, ChevronUp, ExternalLink, ChevronLeft,
   Shield, UserCheck, UserCog, Filter, Download, MoreVertical, Activity, GitMerge, Eye, Trash2, Mail, Key, ShieldAlert, LockKeyhole, UserPlus, ListTree, Link, Briefcase,
-  Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle, Image
+  Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle, Image as ImageIcon, Maximize2, ZoomIn, ZoomOut
 } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from './lib/imageUtils';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
 import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse } from './types';
 import { ROOT_FOLDERS } from './constants';
@@ -551,8 +553,10 @@ export default function App() {
     availability: 'Always',
     visibility: 'All Users',
     learningPlans: [] as string[],
-    status: 'Under Maintenance',
-    category: 'Guesty'
+    status: 'Under Maintenance' as 'Published' | 'Under Maintenance' | 'Draft',
+    category: 'Guesty',
+    useDynamicThumbnail: true,
+    thumbnail: ''
   });
   
   const [repository, setRepository] = useState<FileItem[]>(() => getInitialState('guesty_repository', initialRepository));
@@ -596,6 +600,36 @@ export default function App() {
   const [automations, setAutomations] = useState<any[]>(() => getInitialState('guesty_automations', initialAutomations));
   const [automationSearchQuery, setAutomationSearchQuery] = useState('');
   const [showNewAutomationModal, setShowNewAutomationModal] = useState(false);
+  
+  // Thumbnail specific state
+  const [showThumbnailRepoPicker, setShowThumbnailRepoPicker] = useState(false);
+  const thumbnailInputRef = React.useRef<HTMLInputElement>(null);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [showCropper, setShowCropper] = useState(false);
+
+  const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const showCroppedImage = useCallback(async () => {
+    if (!imageToCrop) return;
+    try {
+      const croppedImage = await getCroppedImg(
+        imageToCrop,
+        croppedAreaPixels
+      );
+      if (activeCourseId) {
+        setCourses(prev => prev.map(c => c.id === activeCourseId ? { ...c, thumbnail: croppedImage, useDynamicThumbnail: false } : c));
+      }
+      setShowCropper(false);
+      setImageToCrop(null);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [imageToCrop, croppedAreaPixels, activeCourseId]);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
@@ -3506,61 +3540,179 @@ export default function App() {
                           <h4 className="text-sm font-bold text-guesty-forest/60 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <BookOpen className="w-4 h-4"/> Course Details
                           </h4>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-bold text-guesty-black mb-1">Course Title</label>
-                              <input 
-                                type="text" 
-                                value={activeCourse.title}
-                                onChange={(e) => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, title: e.target.value } : c))}
-                                className="w-full px-4 py-2 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-ocean outline-none"
-                              />
-                            </div>
+                          <div className="space-y-6">
                             <div className="space-y-4">
                               <div className="flex items-center gap-2 mb-2">
-                                <Image className="w-4 h-4 text-guesty-forest/40" />
-                                <h4 className="text-sm font-bold text-guesty-forest/60 uppercase tracking-widest">Course Template</h4>
+                                <ImageIcon className="w-4 h-4 text-guesty-forest/40" />
+                                <h4 className="text-sm font-bold text-guesty-forest/60 uppercase tracking-widest">Course Visual Identity</h4>
                               </div>
-                              
-                              <div className="p-4 bg-guesty-cream/10 border border-guesty-beige rounded-[24px] shadow-sm space-y-6">
-                                <div className="grid grid-cols-4 gap-2">
-                                  {[
-                                    { name: 'Soft Skills', bg: '#5C1E3A' },
-                                    { name: 'Product Education', bg: '#0D332D' },
-                                    { name: 'Onboarding', bg: '#536DDE' },
-                                    { name: 'Guesty', bg: '#3C4858' },
-                                    { name: 'ILT', bg: '#E68A7B' },
-                                    { name: 'GLite', bg: '#82B5B2' },
-                                    { name: 'GPro + Processes', bg: '#136353' }
-                                  ].map((cat, index) => (
-                                    <button
-                                      key={cat.name}
-                                      onClick={() => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, category: cat.name } : c))}
-                                      className={cn(
-                                        "px-2 py-1.5 rounded-[12px] text-[10px] font-bold text-left transition-all border flex items-center gap-2",
-                                        activeCourse.category === cat.name 
-                                          ? "bg-guesty-forest text-white border-guesty-forest shadow-sm" 
-                                          : "bg-white text-guesty-forest border-guesty-beige hover:border-guesty-ocean hover:bg-guesty-cream/50"
-                                      )}
+
+                              <div className="p-5 bg-guesty-cream/10 border border-guesty-beige rounded-[24px] shadow-sm space-y-6">
+                                {/* Text Elements */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <label className="block text-[10px] font-bold text-guesty-forest/60 uppercase tracking-widest">Course Title</label>
+                                    <input 
+                                      type="text" 
+                                      value={activeCourse.title}
+                                      onChange={(e) => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, title: e.target.value } : c))}
+                                      className="w-full px-4 py-2 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-ocean outline-none transition-all"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="block text-[10px] font-bold text-guesty-forest/60 uppercase tracking-widest">Display Status</label>
+                                    <select 
+                                      value={activeCourse.status}
+                                      onChange={(e) => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, status: e.target.value as "Under Maintenance" | "Published" | "Draft" | "Archived" } : c))}
+                                      className="w-full px-4 py-2 bg-white border border-guesty-beige rounded-[8px] text-sm focus:border-guesty-ocean outline-none transition-all appearance-none"
                                     >
-                                      <div className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5" style={{ backgroundColor: cat.bg }} />
-                                      <span className="truncate">{cat.name}</span>
-                                    </button>
-                                  ))}
+                                      <option value="Draft">Draft</option>
+                                      <option value="Published">Published</option>
+                                      <option value="Under Maintenance">Under Maintenance</option>
+                                      <option value="Archived">Archived</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                {/* Thumbnail Selection */}
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-[10px] font-bold text-guesty-forest/60 uppercase tracking-widest">Thumbnail Selection</h5>
+                                    <div className="flex bg-guesty-cream p-1 rounded-[10px] border border-guesty-beige">
+                                      <button 
+                                        onClick={() => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, useDynamicThumbnail: true } : c))}
+                                        className={cn(
+                                          "px-3 py-1.5 text-[10px] font-bold rounded-[7px] transition-all",
+                                          activeCourse.useDynamicThumbnail ? "bg-white text-guesty-forest shadow-sm" : "text-guesty-forest/60 hover:text-guesty-forest"
+                                        )}
+                                      >
+                                        Templates
+                                      </button>
+                                      <button 
+                                        onClick={() => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, useDynamicThumbnail: false } : c))}
+                                        className={cn(
+                                          "px-3 py-1.5 text-[10px] font-bold rounded-[7px] transition-all",
+                                          !activeCourse.useDynamicThumbnail ? "bg-white text-guesty-forest shadow-sm" : "text-guesty-forest/60 hover:text-guesty-forest"
+                                        )}
+                                      >
+                                        Custom Image
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {activeCourse.useDynamicThumbnail ? (
+                                    <div className="grid grid-cols-4 gap-2 animate-in fade-in zoom-in-95 duration-300">
+                                      {[
+                                        { name: 'Soft Skills', bg: '#5C1E3A' },
+                                        { name: 'Product Education', bg: '#0D332D' },
+                                        { name: 'Onboarding', bg: '#536DDE' },
+                                        { name: 'Guesty', bg: '#3C4858' },
+                                        { name: 'ILT', bg: '#E68A7B' },
+                                        { name: 'GLite', bg: '#82B5B2' }
+                                      ].map((cat) => (
+                                        <button
+                                          key={cat.name}
+                                          onClick={() => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, category: cat.name } : c))}
+                                          className={cn(
+                                            "px-2 py-1.5 rounded-[12px] text-[10px] font-bold text-left transition-all border flex items-center gap-2",
+                                            activeCourse.category === cat.name 
+                                              ? "bg-guesty-forest text-white border-guesty-forest shadow-sm" 
+                                              : "bg-white text-guesty-forest border-guesty-beige hover:border-guesty-ocean hover:bg-guesty-cream/50"
+                                          )}
+                                        >
+                                          <div className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/5" style={{ backgroundColor: cat.bg }} />
+                                          <span className="truncate">{cat.name}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <button 
+                                          onClick={() => thumbnailInputRef.current?.click()}
+                                          className="flex flex-col items-center justify-center p-3 border-2 border-dashed border-guesty-beige rounded-[16px] hover:border-guesty-ocean hover:bg-guesty-ocean/5 transition-all group"
+                                        >
+                                          <div className="w-10 h-10 rounded-full bg-guesty-ocean/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                            <UploadCloud className="w-5 h-5 text-guesty-ocean" />
+                                          </div>
+                                          <span className="text-[10px] font-bold text-guesty-forest uppercase tracking-wider text-center">Upload PNG/JPG</span>
+                                          <input 
+                                            ref={thumbnailInputRef}
+                                            type="file" 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={(e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) {
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => {
+                                                  setImageToCrop(reader.result as string);
+                                                  setShowCropper(true);
+                                                };
+                                                reader.readAsDataURL(file);
+                                              }
+                                            }}
+                                          />
+                                        </button>
+                                        <button 
+                                          onClick={() => setShowThumbnailRepoPicker(true)}
+                                          className="flex flex-col items-center justify-center p-3 border-2 border-dashed border-guesty-beige rounded-[16px] hover:border-guesty-ocean hover:bg-guesty-ocean/5 transition-all group"
+                                        >
+                                          <div className="w-10 h-10 rounded-full bg-guesty-forest/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                            <Database className="w-5 h-5 text-guesty-forest" />
+                                          </div>
+                                          <span className="text-[10px] font-bold text-guesty-forest uppercase tracking-wider text-center">Browse Repository</span>
+                                        </button>
+                                      </div>
+                                      
+                                      <div>
+                                        <label className="block text-[10px] font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">Or Image URL</label>
+                                        <div className="relative flex gap-2">
+                                          <div className="relative flex-1">
+                                            <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
+                                            <input 
+                                              type="text" 
+                                              value={activeCourse.thumbnail || ''}
+                                              onChange={(e) => setCourses(courses.map(c => c.id === activeCourseId ? { ...c, thumbnail: e.target.value } : c))}
+                                              placeholder="https://images.unsplash.com/..."
+                                              className="w-full pl-10 pr-4 py-3 bg-white border border-guesty-beige rounded-[12px] text-sm focus:border-guesty-ocean outline-none transition-all placeholder:text-guesty-forest/30"
+                                            />
+                                          </div>
+                                          {activeCourse.thumbnail && (
+                                            <button 
+                                              onClick={() => {
+                                                setImageToCrop(activeCourse.thumbnail);
+                                                setShowCropper(true);
+                                              }}
+                                              type="button"
+                                              className="px-4 py-2 bg-guesty-ocean/10 text-guesty-ocean rounded-[12px] hover:bg-guesty-ocean/20 transition-all flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest"
+                                            >
+                                              <Maximize2 className="w-4 h-4" />
+                                              Adjust
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                                 
-                                <div className="pt-2 border-t border-guesty-beige/50">
+                                {/* Preview Section */}
+                                <div className="pt-4 border-t border-guesty-beige/50">
+                                  <p className="text-[10px] font-bold text-guesty-forest/40 uppercase tracking-widest mb-3 text-center">Live Preview</p>
                                   <div className="w-full max-w-sm mx-auto">
                                     <CourseThumbnail 
                                       title={activeCourse.title} 
                                       audience={activeCourse.audience} 
                                       status={activeCourse.status} 
                                       category={activeCourse.category}
+                                      backgroundImage={!activeCourse.useDynamicThumbnail ? activeCourse.thumbnail : undefined}
                                     />
                                   </div>
                                 </div>
                               </div>
                             </div>
+
                             <div>
                               <label className="block text-sm font-bold text-guesty-black mb-1">Enrollment Type</label>
                               <select 
@@ -4259,17 +4411,14 @@ export default function App() {
                               </div>
                             )}
                             <div className="h-48 overflow-hidden relative rounded-[16px]">
-                              {course.useDynamicThumbnail ? (
-                                <CourseThumbnail 
-                                  title={course.title} 
-                                  audience={course.audience} 
-                                  status={course.status}
-                                  category={course.category}
-                                  className="h-full"
-                                />
-                              ) : (
-                                <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
-                              )}
+                              <CourseThumbnail 
+                                title={course.title} 
+                                audience={course.audience} 
+                                status={course.status}
+                                category={course.category}
+                                backgroundImage={!course.useDynamicThumbnail ? course.thumbnail : undefined}
+                                className="h-full"
+                              />
                               <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                 <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
                                   <PlayCircle className="w-5 h-5" /> {course.progress && course.progress > 0 ? 'Continue' : 'Start Course'}
@@ -4349,17 +4498,14 @@ export default function App() {
                     }).map((course) => (
                       <div key={course.id} className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col p-2">
                         <div className="h-48 overflow-hidden relative rounded-[16px]">
-                          {course.useDynamicThumbnail ? (
-                            <CourseThumbnail 
-                              title={course.title} 
-                              audience={course.audience} 
-                              status={course.status}
-                              category={course.category}
-                              className="h-full"
-                            />
-                          ) : (
-                            <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" referrerPolicy="no-referrer" />
-                          )}
+                          <CourseThumbnail 
+                            title={course.title} 
+                            audience={course.audience} 
+                            status={course.status}
+                            category={course.category}
+                            backgroundImage={!course.useDynamicThumbnail ? course.thumbnail : undefined}
+                            className="h-full"
+                          />
                           <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                             <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
                               <PlayCircle className="w-5 h-5" /> {course.progress && course.progress > 0 ? 'Continue' : 'Start Course'}
@@ -5130,42 +5276,91 @@ export default function App() {
                   </div>
 
                   <div className="pt-4 border-t border-guesty-beige">
-                    <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest mb-3">Course Template</label>
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="block text-xs font-bold text-guesty-forest/60 uppercase tracking-widest">Course Thumbnail</label>
+                      <div className="flex bg-guesty-cream p-1 rounded-[10px]">
+                        <button 
+                          onClick={() => setNewCourseData({...newCourseData, useDynamicThumbnail: true})}
+                          className={cn(
+                            "px-4 py-1.5 text-[10px] font-bold rounded-[7px] transition-all",
+                            newCourseData.useDynamicThumbnail ? "bg-white text-guesty-forest shadow-sm" : "text-guesty-forest/60 hover:text-guesty-forest"
+                          )}
+                        >
+                          Templates
+                        </button>
+                        <button 
+                          onClick={() => setNewCourseData({...newCourseData, useDynamicThumbnail: false})}
+                          className={cn(
+                            "px-4 py-1.5 text-[10px] font-bold rounded-[7px] transition-all",
+                            !newCourseData.useDynamicThumbnail ? "bg-white text-guesty-forest shadow-sm" : "text-guesty-forest/60 hover:text-guesty-forest"
+                          )}
+                        >
+                          Custom Image
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-4">
-                        <div className="grid grid-cols-1 gap-2">
-                          {[
-                            { name: 'Soft Skills', bg: '#5C1E3A' },
-                            { name: 'Product Education', bg: '#0D332D' },
-                            { name: 'Onboarding', bg: '#536DDE' },
-                            { name: 'Guesty', bg: '#3C4858' },
-                            { name: 'ILT', bg: '#E68A7B' },
-                            { name: 'GLite', bg: '#82B5B2' },
-                            { name: 'GPro + Processes', bg: '#136353' }
-                          ].map((cat, index) => (
-                            <button
-                              key={cat.name}
-                              onClick={() => setNewCourseData({...newCourseData, category: cat.name})}
-                              className={cn(
-                                "px-3 py-2.5 rounded-[12px] text-[10px] font-bold text-left transition-all border flex items-center justify-between group",
-                                newCourseData.category === cat.name 
-                                  ? "bg-guesty-forest text-white border-guesty-forest shadow-md" 
-                                  : "bg-white text-guesty-forest border-guesty-beige hover:border-guesty-ocean hover:bg-guesty-cream/30"
-                              )}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: cat.bg }} />
-                                <span className="tracking-tight">{cat.name}</span>
+                        {newCourseData.useDynamicThumbnail ? (
+                          <div className="grid grid-cols-1 gap-2">
+                            {[
+                              { name: 'Soft Skills', bg: '#5C1E3A' },
+                              { name: 'Product Education', bg: '#0D332D' },
+                              { name: 'Onboarding', bg: '#536DDE' },
+                              { name: 'Guesty', bg: '#3C4858' },
+                              { name: 'ILT', bg: '#E68A7B' },
+                              { name: 'GLite', bg: '#82B5B2' }
+                            ].map((cat, index) => (
+                              <button
+                                key={cat.name}
+                                onClick={() => setNewCourseData({...newCourseData, category: cat.name})}
+                                className={cn(
+                                  "px-3 py-2.5 rounded-[12px] text-[10px] font-bold text-left transition-all border flex items-center justify-between group",
+                                  newCourseData.category === cat.name 
+                                    ? "bg-guesty-forest text-white border-guesty-forest shadow-md" 
+                                    : "bg-white text-guesty-forest border-guesty-beige hover:border-guesty-ocean hover:bg-guesty-cream/30"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: cat.bg }} />
+                                  <span className="tracking-tight">{cat.name}</span>
+                                </div>
+                                <div className={cn(
+                                  "w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
+                                  newCourseData.category === cat.name ? "bg-white border-white" : "border-guesty-beige group-hover:border-guesty-ocean"
+                                )}>
+                                  {newCourseData.category === cat.name && <Check className="w-2.5 h-2.5 text-guesty-forest" />}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div>
+                              <label className="block text-[10px] font-bold text-guesty-forest/60 uppercase tracking-widest mb-2">Image URL</label>
+                              <div className="relative">
+                                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-guesty-forest/40" />
+                                <input 
+                                  type="text" 
+                                  value={newCourseData.thumbnail}
+                                  onChange={(e) => setNewCourseData({...newCourseData, thumbnail: e.target.value})}
+                                  placeholder="https://images.unsplash.com/..."
+                                  className="w-full pl-10 pr-4 py-3 bg-white border border-guesty-beige rounded-[12px] text-sm focus:border-guesty-ocean outline-none transition-all placeholder:text-guesty-forest/30"
+                                />
                               </div>
-                              <div className={cn(
-                                "w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
-                                newCourseData.category === cat.name ? "bg-white border-white" : "border-guesty-beige group-hover:border-guesty-ocean"
-                              )}>
-                                {newCourseData.category === cat.name && <Check className="w-2.5 h-2.5 text-guesty-forest" />}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
+                            </div>
+                            <div className="p-4 bg-guesty-cream/50 border border-guesty-beige rounded-[12px] text-center">
+                              <ImageIcon className="w-8 h-8 text-guesty-forest/20 mx-auto mb-2" />
+                              <p className="text-xs text-guesty-forest/60 leading-relaxed">
+                                Enter a direct link to an image. For best results, use a 16:9 aspect ratio.
+                              </p>
+                              <button className="mt-3 text-xs font-bold text-guesty-ocean hover:underline flex items-center gap-1 mx-auto">
+                                <Plus className="w-3.5 h-3.5" /> Or choose from Assets
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="relative group">
@@ -5176,6 +5371,7 @@ export default function App() {
                             audience={newCourseData.audience as 'Internal' | 'External'} 
                             status="Draft"
                             category={newCourseData.category}
+                            backgroundImage={!newCourseData.useDynamicThumbnail ? newCourseData.thumbnail : undefined}
                           />
                         </div>
                       </div>
@@ -5311,7 +5507,7 @@ export default function App() {
                         name="courseStatus"
                         value="Under Maintenance"
                         checked={newCourseData.status === 'Under Maintenance'}
-                        onChange={(e) => setNewCourseData({...newCourseData, status: e.target.value})}
+                        onChange={(e) => setNewCourseData({...newCourseData, status: e.target.value as "Under Maintenance" | "Published" | "Draft"})}
                         className="mt-1 w-4 h-4 text-guesty-ocean focus:ring-guesty-ocean border-guesty-beige"
                       />
                       <div>
@@ -5326,7 +5522,7 @@ export default function App() {
                         name="courseStatus"
                         value="Published"
                         checked={newCourseData.status === 'Published'}
-                        onChange={(e) => setNewCourseData({...newCourseData, status: e.target.value})}
+                        onChange={(e) => setNewCourseData({...newCourseData, status: e.target.value as "Under Maintenance" | "Published" | "Draft"})}
                         className="mt-1 w-4 h-4 text-guesty-nature focus:ring-guesty-nature border-guesty-beige"
                       />
                       <div>
@@ -5395,7 +5591,9 @@ export default function App() {
                       visibility: 'All Users', 
                       learningPlans: [], 
                       status: 'Under Maintenance',
-                      category: 'Guesty'
+                      category: 'Guesty',
+                      useDynamicThumbnail: true,
+                      thumbnail: ''
                     });
                     setCourseWizardStep(1);
                     setShowCourseWizard(false);
@@ -7041,6 +7239,142 @@ export default function App() {
               <button onClick={() => { setShowPreviewModal(false); setSelectedPreviewUser(null); }} className="px-6 py-2.5 rounded-[8px] font-bold bg-guesty-ocean text-white hover:bg-[#2b8a9e] transition-colors">
                 Done
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Thumbnail Repository Picker */}
+      {showThumbnailRepoPicker && (
+        <div className="fixed inset-0 bg-guesty-night/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="p-6 border-b border-guesty-beige flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-guesty-night">Select Background Image</h3>
+                <p className="text-sm text-guesty-night/60">Choose an image from your repository or external sources.</p>
+              </div>
+              <button 
+                onClick={() => setShowThumbnailRepoPicker(false)}
+                className="p-2 hover:bg-guesty-cream rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-guesty-night" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[
+                  'https://images.unsplash.com/photo-1552664730-d307ca884978',
+                  'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5',
+                  'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
+                  'https://images.unsplash.com/photo-1450101499163-c8848c66cb85',
+                  'https://images.unsplash.com/photo-1550751827-4bd374c3f58b',
+                  'https://images.unsplash.com/photo-1677442136019-21780ecad995',
+                  'https://images.unsplash.com/photo-1573164713988-8665fc963095',
+                  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3',
+                  'https://images.unsplash.com/photo-1522202176988-66273c2fd55f',
+                  'https://images.unsplash.com/photo-1553877522-43269d4ea984',
+                  'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4',
+                  'https://images.unsplash.com/photo-1523240795612-9a054b0db644'
+                ].map((url, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      const fullUrl = `${url}?auto=format&fit=crop&q=80&w=800&h=450`;
+                      setImageToCrop(fullUrl);
+                      setShowThumbnailRepoPicker(false);
+                      setShowCropper(true);
+                    }}
+                    className="group relative aspect-video rounded-[16px] overflow-hidden border-2 border-transparent hover:border-guesty-ocean transition-all shadow-sm"
+                  >
+                    <img 
+                      src={`${url}?auto=format&fit=crop&q=80&w=400&h=225`} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      alt="Repo Asset" 
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-guesty-ocean/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="bg-white p-2 rounded-full shadow-lg text-guesty-ocean">
+                        <Check className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 bg-guesty-cream border-t border-guesty-beige flex justify-end">
+              <button 
+                onClick={() => setShowThumbnailRepoPicker(false)}
+                className="px-6 py-2.5 font-bold text-guesty-forest hover:bg-guesty-beige rounded-full transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Cropper Modal */}
+      {showCropper && imageToCrop && (
+        <div className="fixed inset-0 bg-guesty-night/80 backdrop-blur-md z-[110] flex flex-col animate-in fade-in duration-300">
+          <div className="p-6 flex items-center justify-between border-b border-white/10 bg-guesty-night text-white shrink-0">
+            <div>
+              <h3 className="text-xl font-bold">Adjust Thumbnail</h3>
+              <p className="text-sm text-white/60">Move and scale the image to fit the 16:9 frame.</p>
+            </div>
+            <button 
+              onClick={() => { setShowCropper(false); setImageToCrop(null); }}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          
+          <div className="flex-1 relative bg-black/50">
+            <Cropper
+              image={imageToCrop}
+              crop={crop}
+              zoom={zoom}
+              aspect={16 / 9}
+              onCropChange={setCrop}
+              onCropComplete={onCropComplete}
+              onZoomChange={setZoom}
+            />
+          </div>
+
+          <div className="p-8 bg-guesty-night text-white space-y-6 shrink-0">
+            <div className="max-w-xl mx-auto space-y-4">
+              <div className="flex items-center gap-4">
+                <ZoomOut className="w-5 h-5 text-white/40" />
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="flex-1 accent-guesty-ocean h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                />
+                <ZoomIn className="w-5 h-5 text-white/40" />
+              </div>
+              
+              <div className="flex justify-center gap-3">
+                <button 
+                  onClick={() => { setShowCropper(false); setImageToCrop(null); }}
+                  className="px-8 py-3 font-bold border border-white/20 rounded-full hover:bg-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={showCroppedImage}
+                  className="px-8 py-3 font-bold bg-guesty-ocean text-white rounded-full hover:bg-[#2b8a9e] transition-all flex items-center gap-2 shadow-lg shadow-guesty-ocean/20"
+                >
+                  <Check className="w-5 h-5" />
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>

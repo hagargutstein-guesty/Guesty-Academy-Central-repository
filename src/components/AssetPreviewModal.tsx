@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Maximize2, Download, ExternalLink, FileText, Video, Package, AlertCircle, Globe, Link, FileCode, Tag } from "lucide-react";
+import { X, Maximize2, Download, ExternalLink, FileText, Video, Package, AlertCircle, Globe, Link, FileCode, Tag, Presentation } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FileItem } from "../types";
 
@@ -70,6 +70,7 @@ const AssetPreviewModal: React.FC<AssetPreviewModalProps> = ({ file, isOpen, onC
         );
       case "SCORM":
       case "xAPI":
+      case "PPTX":
         return (
           <div className="flex flex-col items-center justify-center h-[500px] bg-gradient-to-br from-guesty-ice to-white rounded-2xl border border-guesty-nature/10 shadow-lg relative overflow-hidden">
             <div className="absolute inset-0 opacity-5 pointer-events-none">
@@ -77,18 +78,22 @@ const AssetPreviewModal: React.FC<AssetPreviewModalProps> = ({ file, isOpen, onC
             </div>
             <div className="relative z-10 text-center p-8">
               <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mb-6 mx-auto shadow-xl border border-guesty-nature/10">
-                {file.type === "SCORM" ? <Package className="w-10 h-10 text-guesty-nature" /> : <FileCode className="w-10 h-10 text-guesty-ocean" />}
+                {file.type === "SCORM" ? <Package className="w-10 h-10 text-guesty-nature" /> : 
+                 file.type === "PPTX" ? <Presentation className="w-10 h-10 text-[#A43721]" /> :
+                 <FileCode className="w-10 h-10 text-guesty-ocean" />}
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{file.type} Content Player</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{file.type} {file.type === "PPTX" ? "Presentation" : "Content Player"}</h3>
               <p className="text-sm text-gray-500 max-w-xs mx-auto mb-8">
-                {file.type} packages require a dedicated player environment to track progress and reporting.
+                {file.type === "PPTX" 
+                  ? "PowerPoint presentations can be downloaded or launched in a viewer."
+                  : `${file.type} packages require a dedicated player environment to track progress and reporting.`}
               </p>
               <button 
                 className="px-8 py-3 bg-guesty-nature text-white rounded-2xl font-bold text-sm hover:bg-guesty-forest shadow-lg shadow-guesty-nature/20 transition-all flex items-center space-x-2 mx-auto"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Launch in New Window</span>
+                <span>{file.type === "PPTX" ? "Open Presentation" : "Launch in New Window"}</span>
               </button>
             </div>
           </div>
@@ -112,6 +117,7 @@ const AssetPreviewModal: React.FC<AssetPreviewModalProps> = ({ file, isOpen, onC
       case "SCORM": return <Package className="w-5 h-5 text-guesty-merlot" />;
       case "xAPI": return <FileCode className="w-5 h-5 text-guesty-ocean" />;
       case "PDF": return <FileText className="w-5 h-5 text-guesty-nature" />;
+      case "PPTX": return <Presentation className="w-5 h-5 text-[#A43721]" />;
       case "HTML": return <Globe className="w-5 h-5 text-guesty-nature" />;
       case "Link": return <Link className="w-5 h-5 text-guesty-ocean" />;
       default: return <FileText className="w-5 h-5 text-gray-400" />;

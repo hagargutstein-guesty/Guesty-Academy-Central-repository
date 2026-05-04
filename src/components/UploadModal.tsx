@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from "react";
-import { X, Upload, FileText, Video, File, CheckCircle2, AlertCircle, FileArchive, Link, Globe, FileType, Tag, Search } from "lucide-react";
+import { X, Upload, FileText, Video, File, CheckCircle2, AlertCircle, FileArchive, Link, Globe, FileType, Tag, Search, Presentation } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FileItem, Folder } from "../types";
 
@@ -11,11 +11,12 @@ interface UploadModalProps {
   initialFolderId?: string;
   mode?: "upload" | "version";
   fixedType?: string;
+  initialType?: string;
   assetName?: string;
   associatedCourses?: any[];
 }
 
-const ALLOWED_TYPES = ["PDF", "Video", "SCORM", "xAPI", "HTML", "Link"];
+const ALLOWED_TYPES = ["PDF", "Video", "SCORM", "xAPI", "HTML", "Link", "PPTX"];
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 const UploadModal: React.FC<UploadModalProps> = ({ 
@@ -26,11 +27,12 @@ const UploadModal: React.FC<UploadModalProps> = ({
   initialFolderId,
   mode = "upload",
   fixedType,
+  initialType,
   assetName = "",
   associatedCourses = []
 }) => {
   const [fileName, setFileName] = useState(assetName);
-  const [fileType, setFileType] = useState(fixedType || "PDF");
+  const [fileType, setFileType] = useState(fixedType || initialType || "PDF");
   const [selectedFolderId, setSelectedFolderId] = useState<string>(initialFolderId || "");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -73,10 +75,11 @@ const UploadModal: React.FC<UploadModalProps> = ({
     if (["mp4", "mov", "avi"].includes(extension || "")) detectedType = "Video";
     else if (["zip"].includes(extension || "")) detectedType = "SCORM";
     else if (["pdf"].includes(extension || "")) detectedType = "PDF";
+    else if (["pptx", "ppt"].includes(extension || "")) detectedType = "PPTX";
     else if (["html", "htm"].includes(extension || "")) detectedType = "HTML";
     else if (["tincan", "xml"].includes(extension || "")) detectedType = "xAPI";
     else {
-      setError("Invalid file type. Allowed: PDF, Video, SCORM, xAPI, HTML.");
+      setError("Invalid file type. Allowed: PDF, PPTX, Video, SCORM, xAPI, HTML.");
       return false;
     }
 
@@ -199,7 +202,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
 
   const resetForm = () => {
     setFileName("");
-    setFileType("PDF");
+    setFileType(fixedType || initialType || "PDF");
     setSelectedFolderId(initialFolderId || "");
     setUrl("");
     setDescription("");
@@ -281,10 +284,11 @@ const UploadModal: React.FC<UploadModalProps> = ({
                   {fileType === "Video" ? <Video className="w-8 h-8" /> : 
                    fileType === "SCORM" || fileType === "xAPI" ? <FileArchive className="w-8 h-8" /> : 
                    fileType === "HTML" ? <Globe className="w-8 h-8" /> :
+                   fileType === "PPTX" ? <Presentation className="w-8 h-8" /> :
                    <FileText className="w-8 h-8" />}
                 </div>
                 <p className="text-sm font-bold text-gray-900">{fileName ? fileName : "Click or drag file to upload"}</p>
-                <p className="text-xs text-gray-400 mt-1">PDF, MP4, SCORM, xAPI, or HTML (Max 50MB)</p>
+                <p className="text-xs text-gray-400 mt-1">PDF, PPTX, MP4, SCORM, xAPI, or HTML (Max 50MB)</p>
                 
                 {fileName && (
                   <div className="absolute top-4 right-4 bg-guesty-nature text-white p-1 rounded-full">
@@ -385,6 +389,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
                     }`}
                   >
                     <option value="PDF">PDF Document</option>
+                    <option value="PPTX">PowerPoint (PPTX)</option>
                     <option value="Video">Video File</option>
                     <option value="SCORM">SCORM Package</option>
                     <option value="xAPI">xAPI (Tin Can)</option>

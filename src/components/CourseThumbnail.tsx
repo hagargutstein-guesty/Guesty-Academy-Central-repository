@@ -28,7 +28,6 @@ export const CourseThumbnail: React.FC<CourseThumbnailProps> = ({
     'Guesty': { bg: '#3C4858', accent: '#EBEFF2', accentText: '#3C4858' },
     'ILT': { bg: '#E68A7B', accent: '#FDE2E4', accentText: '#5C1E3A' },
     'GLite': { bg: '#82B5B2', accent: '#DDF5F2', accentText: '#0D332D' },
-    'GPro + Processes': { bg: '#136353', accent: '#C8EEEC', accentText: '#136353' },
   };
 
   const activePreset = category ? presets[category] : null;
@@ -123,6 +122,14 @@ export const CourseThumbnail: React.FC<CourseThumbnailProps> = ({
           )}>
             {isInternal ? 'Internal' : 'External'}
           </div>
+          {category && (
+            <div className={cn(
+              "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm",
+              themeColors.text
+            )}>
+              {category}
+            </div>
+          )}
         </div>
         <h3 className={cn(
           "text-xl font-extrabold leading-tight tracking-tight drop-shadow-md line-clamp-2",

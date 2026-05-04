@@ -49,6 +49,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
   const isAdmin = userRole === "Admin" || userRole === "Instructor";
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadInitialType, setUploadInitialType] = useState<string>("PDF");
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [movingFile, setMovingFile] = useState<FileItem | null>(null);
@@ -548,6 +549,9 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
                             <option value="xAPI">xAPI</option>
                             <option value="Video">Video</option>
                             <option value="PDF">PDF</option>
+                            <option value="PPTX">PPTX</option>
+                            <option value="Link">Link</option>
+                            <option value="HTML">HTML</option>
                           </select>
                         </div>
                         
@@ -702,13 +706,29 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
                 <Plus className="w-4 h-4 text-guesty-nature" />
                 <span>New Quiz</span>
               </button>
-              <button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="flex items-center space-x-2 px-6 py-3 bg-guesty-nature text-white rounded-xl text-sm font-bold hover:bg-guesty-forest transition-all active:scale-95 shadow-sm"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Upload</span>
-              </button>
+              
+              <div className="flex items-center bg-white border border-guesty-beige rounded-xl overflow-hidden shadow-sm">
+                <button
+                  onClick={() => {
+                    setUploadInitialType("PDF");
+                    setIsUploadModalOpen(true);
+                  }}
+                  className="flex items-center space-x-2 px-6 py-3 bg-guesty-nature text-white text-sm font-bold hover:bg-guesty-forest transition-all active:scale-95 border-r border-white/20"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Upload</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setUploadInitialType("Link");
+                    setIsUploadModalOpen(true);
+                  }}
+                  className="p-3 text-guesty-nature hover:bg-guesty-ice transition-colors"
+                  title="Add external link"
+                >
+                  <Link2 className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -1405,9 +1425,10 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
         onClose={() => { setIsUploadModalOpen(false); setIsVersionModalOpen(false); setSelectedAsset(null); }}
         onUpload={isVersionModalOpen ? handleVersionUpload : handleUpload}
         folders={folders}
-        initialFolderId={selectedAsset?.folderId || selectedFolderId}
+        initialFolderId={selectedAsset?.folderId || (selectedFolderId === "all" ? "" : selectedFolderId)}
         mode={isVersionModalOpen ? "version" : "upload"}
         fixedType={isVersionModalOpen ? selectedAsset?.type : undefined}
+        initialType={uploadInitialType}
         assetName={isVersionModalOpen ? (selectedAsset?.title || selectedAsset?.name) : ""}
         associatedCourses={isVersionModalOpen ? courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset?.id)) : []}
       />
