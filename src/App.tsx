@@ -39,11 +39,11 @@ const activeLearningPlans: LearningPlan[] = [
     progress: 20,
     totalCourses: 5,
     courses: [
-      { id: 'l1', title: 'Effective Communication', status: 'Completed' },
-      { id: 'l2', title: 'Conflict Resolution', status: 'In-Progress' },
-      { id: 'l3', title: 'Strategic Planning', status: 'Locked' },
-      { id: 'l4', title: 'Team Building', status: 'Locked' },
-      { id: 'l5', title: 'Performance Reviews', status: 'Locked' },
+      { id: 'lp2-c1', title: 'Effective Communication', status: 'Completed' },
+      { id: 'lp2-c2', title: 'Conflict Resolution', status: 'In-Progress' },
+      { id: 'lp2-c3', title: 'Strategic Planning', status: 'Locked' },
+      { id: 'lp2-c4', title: 'Team Building', status: 'Locked' },
+      { id: 'lp2-c5', title: 'Performance Reviews', status: 'Locked' },
     ]
   }
 ];
@@ -120,8 +120,8 @@ const initialCourses = [
     useDynamicThumbnail: true,
     modules: [
       { id: 'm1', title: 'Welcome to Guesty', type: 'Video', version: 'v1.0' },
-      { id: 'a1', assetId: 'a1', title: 'Data Security Basics', type: 'SCORM', version: 'v1.0' },
-      { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
+      { id: 'c1-a1', assetId: 'a1', title: 'Data Security Basics', type: 'SCORM', version: 'v1.0' },
+      { id: 'c1-a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
       { id: 'm2', title: 'Advanced Data Models', type: 'Video', version: 'v1.0' },
       { id: 'm3', title: 'IT Setup Checklist', type: 'Checklist', version: 'v1.0' },
       { id: 'm4', title: 'Live Q&A Session', type: 'ILT', version: 'v1.0' },
@@ -148,7 +148,7 @@ const initialCourses = [
     useDynamicThumbnail: true,
     modules: [
       { id: 'm5', title: 'Dimensional Modeling Deep Dive', type: 'SCORM', version: 'v1.0' },
-      { id: 'a2', assetId: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1' },
+      { id: 'c2-m1', assetId: 'a2', title: 'Python Fundamentals', type: 'SCORM', version: 'v2.1' },
       { id: 'm6', title: 'Query Optimization Techniques', type: 'Video', version: 'v1.0' },
       { id: 'm7', title: 'Data Warehouse Design Patterns', type: 'SCORM', version: 'v1.0' },
     ] 
@@ -189,8 +189,8 @@ const initialCourses = [
     useDynamicThumbnail: true,
     modules: [
       { id: 'm11', title: 'Code of Conduct Review', type: 'SCORM', version: 'v1.0' },
-      { id: 'a1', assetId: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0' },
-      { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
+      { id: 'c4-a1', assetId: 'a1', title: 'Data Security Basics', type: 'Video', version: 'v2.0' },
+      { id: 'c4-a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
       { id: 'm12', title: 'Data Privacy and GDPR', type: 'Video', version: 'v1.0' },
       { id: 'm13', title: 'Workplace Safety Guidelines', type: 'SCORM', version: 'v1.0' },
       { id: 'm14', title: 'Final Assessment', type: 'Assessment', version: 'v1.0' },
@@ -212,7 +212,7 @@ const initialCourses = [
     useDynamicThumbnail: true,
     modules: [
       { id: 'm15', title: 'Communication Strategies', type: 'Video', version: 'v1.0' },
-      { id: 'a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
+      { id: 'c5-a3', assetId: 'a3', title: 'Company Handbook 2026', type: 'PDF', version: 'v1.0' },
       { id: 'm16', title: 'Handling Difficult Conversations', type: 'SCORM', version: 'v1.0' },
     ] 
   },
@@ -351,11 +351,11 @@ const initialGroups = [
 ];
 
 const initialAutomations = [
-  { id: 'a1', groupId: 'g1', name: 'Onboarding Sync', triggerType: 'Time-Based', triggerCondition: '0 Days after Enrollment Date', actionType: 'Auto-Enrollment', actionTarget: 'Company Onboarding', status: 'Active', affectedUsers: 142 },
-  { id: 'a2', groupId: 'g1', name: 'Security Basics Delay', triggerType: 'Time-Based', triggerCondition: '7 Days after Start Date', actionType: 'Auto-Enrollment', actionTarget: 'Data Security Basics', status: 'Active', affectedUsers: 89 },
-  { id: 'a3', groupId: 'g2', name: 'Data Team Welcome', triggerType: 'Time-Based', triggerCondition: '0 Days after Enrollment Date', actionType: 'Send Notification', actionTarget: 'Welcome to Data Team Email', status: 'Active', affectedUsers: 45 },
-  { id: 'a4', groupId: 'g3', name: 'Leadership Completion', triggerType: 'Course Completion', triggerCondition: 'Leadership 101', actionType: 'Group Transition', actionTarget: 'Move to Advanced Leadership', status: 'Paused', affectedUsers: 0 },
-  { id: 'a5', groupId: 'g1', name: 'Graduate to Data Team', triggerType: 'Time-Based', triggerCondition: '30 Days after Start Date', actionType: 'Group Transition', actionTarget: 'Move to Group Data Team', status: 'Active', affectedUsers: 12 },
+  { id: 'auto-a1', groupId: 'g1', name: 'Onboarding Sync', triggerType: 'Time-Based', triggerCondition: '0 Days after Enrollment Date', actionType: 'Auto-Enrollment', actionTarget: 'Company Onboarding', status: 'Active', affectedUsers: 142 },
+  { id: 'auto-a2', groupId: 'g1', name: 'Security Basics Delay', triggerType: 'Time-Based', triggerCondition: '7 Days after Start Date', actionType: 'Auto-Enrollment', actionTarget: 'Data Security Basics', status: 'Active', affectedUsers: 89 },
+  { id: 'auto-a3', groupId: 'g2', name: 'Data Team Welcome', triggerType: 'Time-Based', triggerCondition: '0 Days after Enrollment Date', actionType: 'Send Notification', actionTarget: 'Welcome to Data Team Email', status: 'Active', affectedUsers: 45 },
+  { id: 'auto-a4', groupId: 'g3', name: 'Leadership Completion', triggerType: 'Course Completion', triggerCondition: 'Leadership 101', actionType: 'Group Transition', actionTarget: 'Move to Advanced Leadership', status: 'Paused', affectedUsers: 0 },
+  { id: 'auto-a5', groupId: 'g1', name: 'Graduate to Data Team', triggerType: 'Time-Based', triggerCondition: '30 Days after Start Date', actionType: 'Group Transition', actionTarget: 'Move to Group Data Team', status: 'Active', affectedUsers: 12 },
 ];
 
 const availableGroups = [
@@ -374,14 +374,14 @@ const initialPowerUserProfiles = [
     name: 'Content Creator',
     description: 'Can manage courses and content repository.',
     permissions: [
-      { id: 'p1', category: 'Course Management', name: 'Create & Edit Courses', description: 'Can create new courses and edit existing ones within their domain.', enabled: true },
-      { id: 'p2', category: 'Course Management', name: 'Publish Courses', description: 'Can publish courses to the live catalog.', enabled: false },
-      { id: 'p3', category: 'Course Management', name: 'Manage Content Repository', description: 'Can upload and manage SCORM, Video, and PDF assets.', enabled: true },
-      { id: 'p4', category: 'User Management', name: 'Add/Edit Users', description: 'Can create or edit users within their assigned site/department.', enabled: false },
-      { id: 'p5', category: 'User Management', name: 'Deactivate Users', description: 'Can archive or deactivate users.', enabled: false },
-      { id: 'p6', category: 'Reporting', name: 'View Analytics', description: 'Can view dashboards and reports for their site/department.', enabled: false },
-      { id: 'p7', category: 'Reporting', name: 'Export Data', description: 'Can export reports to CSV/Excel.', enabled: false },
-      { id: 'p8', category: 'System Settings', name: 'Manage Integrations', description: 'Can configure HRIS, SSO, and other integrations.', enabled: false },
+      { id: 'cp1', category: 'Course Management', name: 'Create & Edit Courses', description: 'Can create new courses and edit existing ones within their domain.', enabled: true },
+      { id: 'cp2', category: 'Course Management', name: 'Publish Courses', description: 'Can publish courses to the live catalog.', enabled: false },
+      { id: 'cp3', category: 'Course Management', name: 'Manage Content Repository', description: 'Can upload and manage SCORM, Video, and PDF assets.', enabled: true },
+      { id: 'cp4', category: 'User Management', name: 'Add/Edit Users', description: 'Can create or edit users within their assigned site/department.', enabled: false },
+      { id: 'cp5', category: 'User Management', name: 'Deactivate Users', description: 'Can archive or deactivate users.', enabled: false },
+      { id: 'cp6', category: 'Reporting', name: 'View Analytics', description: 'Can view dashboards and reports for their site/department.', enabled: false },
+      { id: 'cp7', category: 'Reporting', name: 'Export Data', description: 'Can export reports to CSV/Excel.', enabled: false },
+      { id: 'cp8', category: 'System Settings', name: 'Manage Integrations', description: 'Can configure HRIS, SSO, and other integrations.', enabled: false },
     ]
   },
   {
@@ -389,22 +389,22 @@ const initialPowerUserProfiles = [
     name: 'Regional Admin',
     description: 'Can manage users and view reports for their region.',
     permissions: [
-      { id: 'p1', category: 'Course Management', name: 'Create & Edit Courses', description: 'Can create new courses and edit existing ones within their domain.', enabled: false },
-      { id: 'p2', category: 'Course Management', name: 'Publish Courses', description: 'Can publish courses to the live catalog.', enabled: false },
-      { id: 'p3', category: 'Course Management', name: 'Manage Content Repository', description: 'Can upload and manage SCORM, Video, and PDF assets.', enabled: false },
-      { id: 'p4', category: 'User Management', name: 'Add/Edit Users', description: 'Can create or edit users within their assigned site/department.', enabled: true },
-      { id: 'p5', category: 'User Management', name: 'Deactivate Users', description: 'Can archive or deactivate users.', enabled: true },
-      { id: 'p6', category: 'Reporting', name: 'View Analytics', description: 'Can view dashboards and reports for their site/department.', enabled: true },
-      { id: 'p7', category: 'Reporting', name: 'Export Data', description: 'Can export reports to CSV/Excel.', enabled: true },
-      { id: 'p8', category: 'System Settings', name: 'Manage Integrations', description: 'Can configure HRIS, SSO, and other integrations.', enabled: false },
+      { id: 'p-rp1', category: 'Course Management', name: 'Create & Edit Courses', description: 'Can create new courses and edit existing ones within their domain.', enabled: false },
+      { id: 'p-rp2', category: 'Course Management', name: 'Publish Courses', description: 'Can publish courses to the live catalog.', enabled: false },
+      { id: 'p-rp3', category: 'Course Management', name: 'Manage Content Repository', description: 'Can upload and manage SCORM, Video, and PDF assets.', enabled: false },
+      { id: 'p-rp4', category: 'User Management', name: 'Add/Edit Users', description: 'Can create or edit users within their assigned site/department.', enabled: true },
+      { id: 'p-rp5', category: 'User Management', name: 'Deactivate Users', description: 'Can archive or deactivate users.', enabled: true },
+      { id: 'p-rp6', category: 'Reporting', name: 'View Analytics', description: 'Can view dashboards and reports for their site/department.', enabled: true },
+      { id: 'p-rp7', category: 'Reporting', name: 'Export Data', description: 'Can export reports to CSV/Excel.', enabled: true },
+      { id: 'p-rp8', category: 'System Settings', name: 'Manage Integrations', description: 'Can configure HRIS, SSO, and other integrations.', enabled: false },
     ]
   }
 ];
 
 const initialAuditLogs = [
-  { id: 'l1', admin: 'Mor Damul Vardi', action: 'Bulk Deactivate', target: '3 Users', timestamp: '2026-03-10 09:15 UTC' },
-  { id: 'l2', admin: 'System (HRIS)', action: 'Group Reassignment', target: 'Adi Cohen -> Engineering Lead', timestamp: '2026-03-10 08:00 UTC' },
-  { id: 'l3', admin: 'Mor Damul Vardi', action: 'Impersonation Session', target: 'John Doe', timestamp: '2026-03-09 14:30 UTC' },
+  { id: 'log-l1', admin: 'Mor Damul Vardi', action: 'Bulk Deactivate', target: '3 Users', timestamp: '2026-03-10 09:15 UTC' },
+  { id: 'log-l2', admin: 'System (HRIS)', action: 'Group Reassignment', target: 'Adi Cohen -> Engineering Lead', timestamp: '2026-03-10 08:00 UTC' },
+  { id: 'log-l3', admin: 'Mor Damul Vardi', action: 'Impersonation Session', target: 'John Doe', timestamp: '2026-03-09 14:30 UTC' },
 ];
 
 const getIconForType = (type: string) => {
@@ -1998,8 +1998,8 @@ export default function App() {
 
               {/* Admin Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {adminStats.map((stat, idx) => (
-                  <div key={idx} className="bg-white rounded-[24px] p-8 border border-guesty-beige shadow-sm flex flex-col justify-between">
+                {adminStats.map((stat) => (
+                  <div key={stat.label} className="bg-white rounded-[24px] p-8 border border-guesty-beige shadow-sm flex flex-col justify-between">
                     <div className="text-sm font-bold text-guesty-forest/60 uppercase tracking-widest mb-4">{stat.label}</div>
                     <div className="flex items-end justify-between">
                       <div className="font-display text-5xl font-bold text-guesty-black">{stat.value}</div>
@@ -2886,7 +2886,7 @@ export default function App() {
                               <td className="p-4">
                                 <div className="flex flex-wrap gap-1.5">
                                   {group.tags?.slice(0, 2).map((tag: string, i: number) => (
-                                    <span key={i} className="text-xs font-bold px-2 py-1 bg-guesty-cream text-guesty-forest rounded-[6px]">
+                                    <span key={`group-tag-${group.id}-${i}`} className="text-xs font-bold px-2 py-1 bg-guesty-cream text-guesty-forest rounded-[6px]">
                                       {tag}
                                     </span>
                                   ))}
@@ -2983,7 +2983,7 @@ export default function App() {
                                 {group.type || 'Manual'}
                               </span>
                               {group.tags?.map((tag: string, i: number) => (
-                                <span key={i} className="text-xs font-bold px-3 py-1.5 bg-guesty-cream text-guesty-forest rounded-[8px] flex items-center gap-1.5">
+                                <span key={`tag-${group.id}-${i}`} className="text-xs font-bold px-3 py-1.5 bg-guesty-cream text-guesty-forest rounded-[8px] flex items-center gap-1.5">
                                   {tag}
                                 </span>
                               ))}
@@ -3494,7 +3494,7 @@ export default function App() {
                         <h4 className="text-sm font-bold text-guesty-forest/60 uppercase tracking-widest mb-4">Course Modules</h4>
                         <div className="space-y-3">
                           {activeCourse.modules.map((mod, idx) => (
-                            <div key={idx} className="flex items-center justify-between bg-white p-4 rounded-[16px] border border-guesty-beige shadow-sm group hover:border-guesty-forest/30 transition-colors">
+                            <div key={`mod-${mod.id}-${idx}`} className="flex items-center justify-between bg-white p-4 rounded-[16px] border border-guesty-beige shadow-sm group hover:border-guesty-forest/30 transition-colors">
                               <div className="flex items-center gap-4">
                                 <div className="text-guesty-forest/40 cursor-grab">
                                   <Layers className="w-5 h-5" />
@@ -4250,7 +4250,7 @@ export default function App() {
                         <h3 className="text-xl font-bold text-guesty-black mb-3">Learning Objectives</h3>
                         <ul className="space-y-2">
                           {selectedCatalogCourse.learningObjectives?.map((obj: string, idx: number) => (
-                            <li key={idx} className="flex items-start gap-2 text-guesty-forest/80">
+                            <li key={`obj-${idx}`} className="flex items-start gap-2 text-guesty-forest/80">
                               <CheckCircle2 className="w-5 h-5 text-guesty-ocean shrink-0" />
                               <span>{obj}</span>
                             </li>
@@ -4595,8 +4595,10 @@ export default function App() {
                     const isCompleted = index === 0 && (selectedCatalogCourse.progress || 0) > 0;
                     const isActive = index === 1 || (index === 0 && !(selectedCatalogCourse.progress || 0));
                     
+                    const moduleKey = isObject ? `m-${modId.id}-${index}` : `m-${modId}-${index}`;
+
                     return (
-                      <div key={isObject ? modId.id : modId} className={`p-4 rounded-[16px] border ${isActive ? 'border-2 border-guesty-ocean bg-white shadow-sm relative overflow-hidden' : isCompleted ? 'border-guesty-nature/30 bg-guesty-ice/10 hover:bg-guesty-ice/30' : 'border-guesty-beige bg-white hover:border-guesty-forest/30'} flex gap-4 cursor-pointer transition-colors`}>
+                      <div key={moduleKey} className={`p-4 rounded-[16px] border ${isActive ? 'border-2 border-guesty-ocean bg-white shadow-sm relative overflow-hidden' : isCompleted ? 'border-guesty-nature/30 bg-guesty-ice/10 hover:bg-guesty-ice/30' : 'border-guesty-beige bg-white hover:border-guesty-forest/30'} flex gap-4 cursor-pointer transition-colors`}>
                         {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-guesty-ocean"></div>}
                         <div className={`mt-1 ${isActive ? 'text-guesty-ocean' : isCompleted ? 'text-guesty-nature' : 'text-guesty-forest/30'}`}>
                           {isCompleted ? <CheckCircle className="w-5 h-5" /> : isActive ? <PlayCircle className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
@@ -5712,7 +5714,7 @@ export default function App() {
                       </div>
                       <div className="divide-y divide-guesty-beige">
                         {parsedScormData.modules.map((mod: any, idx: number) => (
-                          <div key={idx} className="p-4 flex items-center gap-3">
+                          <div key={`scorm-mod-${idx}`} className="p-4 flex items-center gap-3">
                             <div className="text-guesty-forest/40">{getIconForType(mod.type)}</div>
                             <div>
                               <p className="text-sm font-bold text-guesty-black">{mod.title}</p>
@@ -6396,7 +6398,7 @@ export default function App() {
                         <span className="text-sm font-bold text-guesty-black">{group.name}</span>
                         <div className="flex items-center gap-2 mt-1">
                           {group.tags?.map((tag: string, i: number) => (
-                            <span key={i} className="text-[10px] font-bold text-guesty-forest/60 uppercase tracking-wider bg-guesty-cream px-1.5 py-0.5 rounded-[4px]">{tag}</span>
+                            <span key={`group-assign-tag-${group.name}-${i}`} className="text-[10px] font-bold text-guesty-forest/60 uppercase tracking-wider bg-guesty-cream px-1.5 py-0.5 rounded-[4px]">{tag}</span>
                           ))}
                         </div>
                       </div>
@@ -7276,9 +7278,9 @@ export default function App() {
                   'https://images.unsplash.com/photo-1553877522-43269d4ea984',
                   'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4',
                   'https://images.unsplash.com/photo-1523240795612-9a054b0db644'
-                ].map((url, idx) => (
+                ].map((url) => (
                   <button
-                    key={idx}
+                    key={url}
                     onClick={() => {
                       const fullUrl = `${url}?auto=format&fit=crop&q=80&w=800&h=450`;
                       setImageToCrop(fullUrl);
@@ -8018,7 +8020,7 @@ export default function App() {
                 {selectedGroupId && (
                   <div className="flex items-center gap-2 mt-2 text-sm">
                     {groups.find(g => g.id === selectedGroupId)?.tags?.map((tag: string, i: number) => (
-                      <span key={i} className="text-[10px] font-bold text-guesty-forest/60 uppercase tracking-wider bg-guesty-cream px-1.5 py-0.5 rounded-[4px]">{tag}</span>
+                      <span key={`automation-tag-${selectedGroupId}-${i}`} className="text-[10px] font-bold text-guesty-forest/60 uppercase tracking-wider bg-guesty-cream px-1.5 py-0.5 rounded-[4px]">{tag}</span>
                     ))}
                   </div>
                 )}

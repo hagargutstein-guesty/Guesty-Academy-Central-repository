@@ -43,6 +43,10 @@ export interface FileItem {
   url?: string;
   tags?: string[];
   description?: string;
+  config?: {
+    scormScoreCalculation?: "last" | "sum" | "average";
+    videoNavigation?: "none" | "free" | "backward_only" | "after_completion";
+  };
   assessmentData?: Assessment; // For assessments stored as learning objects
 }
 

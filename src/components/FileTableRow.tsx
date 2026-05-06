@@ -88,8 +88,8 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
             </button>
             {file.tags && file.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
-                {file.tags.map(tag => (
-                  <span key={tag} className="flex items-center gap-1 px-1.5 py-0.5 bg-guesty-ice/50 text-[8px] font-bold text-guesty-forest/40 uppercase tracking-wider rounded border border-guesty-beige/30">
+                {file.tags.map((tag, i) => (
+                  <span key={`${tag}-${i}`} className="flex items-center gap-1 px-1.5 py-0.5 bg-guesty-ice/50 text-[8px] font-bold text-guesty-forest/40 uppercase tracking-wider rounded border border-guesty-beige/30">
                     <Tag className="w-2 h-2" />
                     {tag}
                   </span>

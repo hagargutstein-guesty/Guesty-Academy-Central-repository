@@ -1,7 +1,9 @@
 import React, { useState, useRef, useMemo } from "react";
-import { X, Upload, FileText, Video, File, CheckCircle2, AlertCircle, FileArchive, Link, Globe, FileType, Tag, Search, Presentation } from "lucide-react";
+import { X, Upload, FileText, Video, File, CheckCircle2, AlertCircle, FileArchive, Link, Globe, FileType, Tag, Search, Presentation, History, ChevronDown, ChevronUp, Layers, Package, Target } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FileItem, Folder } from "../types";
+import JSZip from "jszip";
+import ScormDiffusionWizard, { DiffusionConfig } from "./ScormDiffusionWizard";
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -14,6 +16,7 @@ interface UploadModalProps {
   initialType?: string;
   assetName?: string;
   associatedCourses?: any[];
+  hasLearnerProgress?: boolean;
 }
 
 const ALLOWED_TYPES = ["PDF", "Video", "SCORM", "xAPI", "HTML", "Link", "PPTX"];
@@ -29,10 +32,13 @@ const UploadModal: React.FC<UploadModalProps> = ({
   fixedType,
   initialType,
   assetName = "",
-  associatedCourses = []
+  associatedCourses = [],
+  hasLearnerProgress = false
 }) => {
   const [fileName, setFileName] = useState(assetName);
   const [fileType, setFileType] = useState(fixedType || initialType || "PDF");
+  const [scormScoreCalculation, setScormScoreCalculation] = useState<"last" | "sum" | "average">("last");
+  const [videoNavigation, setVideoNavigation] = useState<"none" | "free" | "backward_only" | "after_completion">("free");
   const [selectedFolderId, setSelectedFolderId] = useState<string>(initialFolderId || "");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -45,6 +51,9 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [updateScope, setUpdateScope] = useState<"all" | "specific">("all");
   const [courseSearchQuery, setCourseSearchQuery] = useState("");
+  const [scormManifest, setScormManifest] = useState<any>(null);
+  const [showScormWizard, setShowScormWizard] = useState(false);
+  const [tempFileRef, setTempFileRef] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reset name when assetName changes or mode changes
@@ -103,7 +112,46 @@ const UploadModal: React.FC<UploadModalProps> = ({
       setFileName(file.name.split('.')[0]);
     }
     setFileType(detectedType);
+    setTempFileRef(file);
+
+    if (detectedType === "SCORM") {
+      handleScormValidation(file);
+    }
+
     return true;
+  };
+
+  const handleScormValidation = async (file: File) => {
+    try {
+      const zip = new JSZip();
+      const contents = await zip.loadAsync(file);
+      const manifestFile = contents.file("imsmanifest.xml");
+      
+      if (!manifestFile) {
+        setError("Invalid SCORM package: imsmanifest.xml not found at root.");
+        return;
+      }
+
+      const manifestXml = await manifestFile.async("string");
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(manifestXml, "text/xml");
+      
+      const identifier = xmlDoc.getElementsByTagName("manifest")[0]?.getAttribute("identifier") || "unknown";
+      const title = xmlDoc.getElementsByTagName("title")[0]?.textContent || file.name;
+      const masteryScore = xmlDoc.getElementsByTagName("adlcp:masteryscore")[0]?.textContent || "80";
+      
+      setScormManifest({
+        identifier,
+        title,
+        masteryScore,
+        version: "v2.0 (New Build)",
+        entryPoint: "index.html"
+      });
+
+    } catch (err) {
+      console.error("SCORM Parsing error:", err);
+      setError("Failed to parse SCORM manifest. Ensure the zip is valid.");
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,9 +169,11 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
-      if (!manualTags.includes(tagInput.trim())) {
-        setManualTags([...manualTags, tagInput.trim()]);
-      }
+      const trimmedTag = tagInput.trim();
+      setManualTags(prev => {
+        if (prev.includes(trimmedTag)) return prev;
+        return [...prev, trimmedTag];
+      });
       setTagInput("");
     }
   };
@@ -152,6 +202,26 @@ const UploadModal: React.FC<UploadModalProps> = ({
     setIsUploading(true);
     setUploadProgress(0);
 
+    // If SCORM, we trigger the wizard after a short "upload simulation"
+    if (fileType === "SCORM" && mode === "version") {
+       // Simulate upload progress first
+       const interval = setInterval(() => {
+         setUploadProgress(prev => {
+           if (prev >= 100) {
+             clearInterval(interval);
+             return 100;
+           }
+           return prev + 10;
+         });
+       }, 100);
+
+       setTimeout(() => {
+          setIsUploading(false);
+          setShowScormWizard(true);
+       }, 1500);
+       return;
+    }
+
     // Simulate progress
     const interval = setInterval(() => {
       setUploadProgress(prev => {
@@ -177,6 +247,10 @@ const UploadModal: React.FC<UploadModalProps> = ({
         version: 'v1.0',
         url: fileType === "Link" ? url : `https://example.com/assets/${Math.random().toString(36).substr(2, 9)}`,
         tags: generateTags(fileName, fileType),
+        config: (fileType === "SCORM" || fileType === "Video") ? {
+          scormScoreCalculation: fileType === "SCORM" ? scormScoreCalculation : undefined,
+          videoNavigation: fileType === "Video" ? videoNavigation : undefined,
+        } : undefined,
         history: [] 
       };
       
@@ -200,6 +274,33 @@ const UploadModal: React.FC<UploadModalProps> = ({
     );
   };
 
+  const handleDiffusionComplete = (config: DiffusionConfig) => {
+    setShowScormWizard(false);
+    
+    const newFile: FileItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: fileName,
+      name: fileName,
+      type: fileType,
+      folderId: selectedFolderId,
+      description: description,
+      createdAt: new Date().toLocaleDateString(),
+      size: `${(Math.random() * 10 + 1).toFixed(1)} MB`,
+      status: 'Active',
+      version: 'v2.0',
+      url: `https://example.com/tenant_1/repository/${Math.random().toString(36).substr(2, 9)}/v2/index.html`,
+      tags: generateTags(fileName, fileType),
+      config: {
+        scormScoreCalculation: scormScoreCalculation,
+      },
+      history: [] 
+    };
+
+    onUpload(newFile, config.pushToCourseIds);
+    resetForm();
+    onClose();
+  };
+
   const resetForm = () => {
     setFileName("");
     setFileType(fixedType || initialType || "PDF");
@@ -212,6 +313,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
     setUploadProgress(0);
     setUpdateScope("all");
     setCourseSearchQuery("");
+    setScormScoreCalculation("last");
+    setVideoNavigation("free");
   };
 
   if (!isOpen) return null;
@@ -364,8 +467,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
                   </div>
                   {manualTags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {manualTags.map(tag => (
-                        <span key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-guesty-lemon/30 text-guesty-nature text-[10px] font-bold uppercase tracking-wider rounded-full border border-guesty-nature/10">
+                      {manualTags.map((tag, idx) => (
+                        <span key={`${tag}-${idx}`} className="flex items-center gap-1.5 px-3 py-1 bg-guesty-lemon/30 text-guesty-nature text-[10px] font-bold uppercase tracking-wider rounded-full border border-guesty-nature/10">
                           {tag}
                           <button onClick={() => removeTag(tag)} className="hover:text-guesty-forest">
                             <X className="w-3 h-3" />
@@ -376,6 +479,19 @@ const UploadModal: React.FC<UploadModalProps> = ({
                   )}
                 </div>
               </div>
+
+              {mode === "version" && (
+                <div className="p-4 bg-guesty-lemon/20 rounded-2xl border border-guesty-nature/10 space-y-2 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-center gap-2 text-guesty-nature">
+                    <History className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-widest">Version Control</span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    You are uploading a new version of <span className="font-bold text-gray-900">"{assetName}"</span>. 
+                    This will maintain the asset's history and central settings.
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -420,33 +536,46 @@ const UploadModal: React.FC<UploadModalProps> = ({
               </div>
 
               {mode === "version" && associatedCourses.length > 0 && (
-                <div className="space-y-4 pt-2 border-t border-gray-50">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Update Scope</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          setUpdateScope("all");
-                          setSelectedCourseIds(associatedCourses.map(c => c.id));
-                        }}
-                        className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
-                          updateScope === "all" 
-                            ? "bg-guesty-nature text-white border-guesty-nature shadow-md shadow-guesty-nature/10" 
-                            : "bg-gray-50 text-gray-500 border-gray-100 hover:border-gray-200"
-                        }`}
-                      >
-                        All Courses ({associatedCourses.length})
-                      </button>
-                      <button
-                        onClick={() => setUpdateScope("specific")}
-                        className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
-                          updateScope === "specific" 
-                            ? "bg-guesty-nature text-white border-guesty-nature shadow-md shadow-guesty-nature/10" 
-                            : "bg-gray-50 text-gray-500 border-gray-100 hover:border-gray-200"
-                        }`}
-                      >
-                        Specific Courses
-                      </button>
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                    <div className="flex flex-col space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <label className="text-sm font-bold text-gray-900">Push to Associated Courses?</label>
+                          <p className="text-[10px] text-gray-500 font-medium">This asset is currently used in {associatedCourses.length} courses.</p>
+                        </div>
+                        <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm">
+                          <Layers className="w-4 h-4 text-guesty-nature" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => {
+                            setUpdateScope("all");
+                            setSelectedCourseIds(associatedCourses.map(c => c.id));
+                          }}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all ${
+                            updateScope === "all" 
+                              ? "bg-guesty-nature text-white border-guesty-nature shadow-lg shadow-guesty-nature/20" 
+                              : "bg-white text-gray-500 border-gray-200 hover:border-guesty-nature/30 hover:text-guesty-nature"
+                          }`}
+                        >
+                          <CheckCircle2 className={`w-4 h-4 ${updateScope === "all" ? "text-white" : "text-gray-300"}`} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-center">Update All Courses</span>
+                        </button>
+                        <button
+                          onClick={() => setUpdateScope("specific")}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all ${
+                            updateScope === "specific" 
+                              ? "bg-guesty-nature text-white border-guesty-nature shadow-lg shadow-guesty-nature/20" 
+                              : "bg-white text-gray-500 border-gray-200 hover:border-guesty-nature/30 hover:text-guesty-nature"
+                          }`}
+                        >
+                          <Search className={`w-4 h-4 ${updateScope === "specific" ? "text-white" : "text-gray-300"}`} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-center">Specific Courses</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -474,9 +603,9 @@ const UploadModal: React.FC<UploadModalProps> = ({
 
                       <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                         {filteredCourses.length > 0 ? (
-                          filteredCourses.map(course => (
+                          filteredCourses.map((course, idx) => (
                             <div 
-                              key={course.id}
+                              key={`${course.id}-${idx}`}
                               onClick={() => toggleCourseSelection(course.id)}
                               className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
                                 selectedCourseIds.includes(course.id) 
@@ -511,6 +640,92 @@ const UploadModal: React.FC<UploadModalProps> = ({
               )}
             </div>
 
+            {/* Dynamic Configuration Sections */}
+            {(fileType === "SCORM" || fileType === "Video") && (
+              <div className="pt-4 border-t border-gray-100 space-y-6 animate-in fade-in slide-in-from-top-4">
+                {fileType === "SCORM" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-guesty-forest">
+                      <Target className="w-4 h-4 text-guesty-nature" />
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900">Score calculation</h3>
+                    </div>
+                    
+                    <div className="space-y-3 pl-1">
+                      {[
+                        { id: "last", label: "The score is the score value of the last executed test" },
+                        { id: "sum", label: "The score is calculated as the sum of all scores of the tests taken by the user" },
+                        { id: "average", label: "The score is calculated as the average score of all the tests taken by the user" }
+                      ].map((opt) => (
+                        <label 
+                          key={opt.id} 
+                          className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                            scormScoreCalculation === opt.id 
+                              ? "bg-guesty-lemon/30 border-guesty-nature/30" 
+                              : "bg-gray-50 border-gray-100 hover:border-gray-200"
+                          } ${hasLearnerProgress ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <input 
+                            type="radio" 
+                            name="scormScore"
+                            disabled={hasLearnerProgress}
+                            checked={scormScoreCalculation === opt.id}
+                            onChange={() => setScormScoreCalculation(opt.id as any)}
+                            className="mt-1 text-guesty-nature focus:ring-guesty-nature h-3.5 w-3.5"
+                          />
+                          <span className="text-xs font-medium text-gray-700 leading-snug">{opt.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    
+                    {hasLearnerProgress && (
+                      <p className="text-[10px] text-gray-500 font-medium italic pl-1 flex items-center gap-1.5 bg-orange-50/50 p-2 rounded-lg border border-orange-100">
+                        <AlertCircle className="w-3 h-3 text-orange-400" />
+                        You can edit this option only if nobody has completed the SCORM training material yet.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {fileType === "Video" && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-guesty-forest">
+                      <Video className="w-4 h-4 text-guesty-nature" />
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900 leading-tight">
+                        Allow users to move through the video by dragging the item in the playhead
+                      </h3>
+                    </div>
+                    
+                    <div className="space-y-3 pl-1">
+                      {[
+                        { id: "none", label: "Do not allow learners to move through the video" },
+                        { id: "free", label: "Learners can move backwards and forward (accessible experience)" },
+                        { id: "backward_only", label: "Learners can only move backwards" },
+                        { id: "after_completion", label: "Learners can move backward and forward only after completing the course or lesson" }
+                      ].map((opt) => (
+                        <label 
+                          key={opt.id} 
+                          className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                            videoNavigation === opt.id 
+                              ? "bg-guesty-lemon/30 border-guesty-nature/30" 
+                              : "bg-gray-50 border-gray-100 hover:border-gray-200"
+                          }`}
+                        >
+                          <input 
+                            type="radio" 
+                            name="videoNav"
+                            checked={videoNavigation === opt.id}
+                            onChange={() => setVideoNavigation(opt.id as any)}
+                            className="mt-1 text-guesty-nature focus:ring-guesty-nature h-3.5 w-3.5"
+                          />
+                          <span className="text-xs font-medium text-gray-700 leading-snug">{opt.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="pt-4">
               <button
                 disabled={(mode === "upload" && !fileName) || !selectedFolderId || isUploading || !!error}
@@ -526,7 +741,13 @@ const UploadModal: React.FC<UploadModalProps> = ({
                 ) : (
                   <>
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>{mode === "version" ? "Upload Version" : "Upload to Repository"}</span>
+                    <span>
+                      {mode === "version" 
+                        ? (selectedCourseIds.length > 0 
+                            ? `Update & Push to ${selectedCourseIds.length} Courses` 
+                            : "Update Version (No Push)") 
+                        : "Upload to Repository"}
+                    </span>
                   </>
                 )}
               </button>
@@ -539,6 +760,17 @@ const UploadModal: React.FC<UploadModalProps> = ({
           </div>
         </motion.div>
       </div>
+      
+      {scormManifest && (
+        <ScormDiffusionWizard
+          isOpen={showScormWizard}
+          onClose={() => setShowScormWizard(false)}
+          onComplete={handleDiffusionComplete}
+          oldManifest={null} // We could pass actual old manifest if we had the object
+          newManifest={scormManifest}
+          associatedCourses={associatedCourses}
+        />
+      )}
     </AnimatePresence>
   );
 };

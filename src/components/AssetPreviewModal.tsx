@@ -192,8 +192,8 @@ const AssetPreviewModal: React.FC<AssetPreviewModalProps> = ({ file, isOpen, onC
                     <div className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Tags & Metadata</p>
                       <div className="flex flex-wrap gap-2">
-                        {file.tags.map(tag => (
-                          <span key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-guesty-ice/50 text-guesty-forest text-[10px] font-bold uppercase tracking-wider rounded-full border border-guesty-beige/30">
+                        {file.tags.map((tag, i) => (
+                          <span key={`${tag}-${i}`} className="flex items-center gap-1.5 px-3 py-1 bg-guesty-ice/50 text-guesty-forest text-[10px] font-bold uppercase tracking-wider rounded-full border border-guesty-beige/30">
                             <Tag className="w-3 h-3" />
                             {tag}
                           </span>
@@ -223,7 +223,7 @@ const AssetPreviewModal: React.FC<AssetPreviewModalProps> = ({ file, isOpen, onC
                     <div className="flex items-center space-x-2">
                       <div className="flex -space-x-2">
                         {[1, 2, 3].map(i => (
-                          <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
+                          <div key={`course-avatar-${i}`} className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 overflow-hidden">
                             <img src={`https://picsum.photos/seed/course${i}/32/32`} alt="" referrerPolicy="no-referrer" />
                           </div>
                         ))}

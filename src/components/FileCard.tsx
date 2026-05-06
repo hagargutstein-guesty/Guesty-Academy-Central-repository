@@ -154,8 +154,8 @@ const FileCard: React.FC<FileCardProps> = ({
                       <span className="font-bold text-guesty-lemon">{file.version}</span>
                       <span className="text-white/50">Current</span>
                     </div>
-                    {file.history.map((h, i) => (
-                      <div key={i} className="flex justify-between items-center">
+                    {file.history.map((h) => (
+                      <div key={h.version} className="flex justify-between items-center">
                         <span>{h.version}</span>
                         <span className="text-white/50">{h.date}</span>
                       </div>

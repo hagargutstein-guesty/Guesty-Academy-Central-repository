@@ -185,7 +185,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
   useEffect(() => {
     if (isArchiveModalOpen && selectedAsset) {
       const associatedCourses = courses.filter(course => 
-        course.modules?.some((m: any) => m.id === selectedAsset.id)
+        course.modules?.some((m: any) => m.assetId === selectedAsset.id || m.id === selectedAsset.id)
       );
       setSelectedArchiveCourseIds(associatedCourses.map(c => c.id));
       setArchiveCourseSearchQuery("");
@@ -201,7 +201,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
           if (selectedArchiveCourseIds.includes(course.id)) {
             return {
               ...course,
-              modules: course.modules?.filter((m: any) => m.id !== asset.id)
+              modules: course.modules?.filter((m: any) => m.assetId !== asset.id && m.id !== asset.id)
             };
           }
           return course;
@@ -429,7 +429,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
             return {
               ...course,
               modules: course.modules?.map((m: any) => 
-                m.id === selectedAsset.id ? { ...m, version: newVersion, title: newFile.title } : m
+                (m.assetId === selectedAsset.id || m.id === selectedAsset.id) ? { ...m, version: newVersion, title: newFile.title } : m
               )
             };
           }
@@ -1261,8 +1261,8 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Used in Courses</p>
                         <div className="flex flex-wrap gap-2">
                           {courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset.id && m.version === selectedAsset.version)).length > 0 ? (
-                            courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset.id && m.version === selectedAsset.version)).map(course => (
-                              <div key={course.id} className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-guesty-nature/10 rounded-full shadow-sm">
+                            courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset.id && m.version === selectedAsset.version)).map((course, idx) => (
+                              <div key={`${course.id}-${idx}`} className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-guesty-nature/10 rounded-full shadow-sm">
                                 <div className="w-4 h-4 rounded-full overflow-hidden">
                                   <img src={course.thumbnail} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                 </div>
@@ -1278,7 +1278,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
 
                     {/* Previous Versions */}
                     {(selectedAsset.history || []).map((h, i) => (
-                      <div key={i} className="p-5 bg-white border border-gray-100 rounded-3xl">
+                      <div key={h.version} className="p-5 bg-white border border-gray-100 rounded-3xl">
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-lg font-bold text-gray-700">{h.version}</p>
@@ -1294,8 +1294,8 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Used in Courses</p>
                           <div className="flex flex-wrap gap-2">
                             {courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset.id && m.version === h.version)).length > 0 ? (
-                              courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset.id && m.version === h.version)).map(course => (
-                                <div key={course.id} className="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-full">
+                              courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset.id && m.version === h.version)).map((course, idx) => (
+                                <div key={`${course.id}-${idx}`} className="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-full">
                                   <div className="w-4 h-4 rounded-full overflow-hidden opacity-50">
                                     <img src={course.thumbnail} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                   </div>
@@ -1430,7 +1430,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
         fixedType={isVersionModalOpen ? selectedAsset?.type : undefined}
         initialType={uploadInitialType}
         assetName={isVersionModalOpen ? (selectedAsset?.title || selectedAsset?.name) : ""}
-        associatedCourses={isVersionModalOpen ? courses.filter(c => c.modules?.some((m: any) => m.id === selectedAsset?.id)) : []}
+        associatedCourses={isVersionModalOpen ? courses.filter(c => c.modules?.some((m: any) => m.assetId === selectedAsset?.id || m.id === selectedAsset?.id)) : []}
       />
 
       <MoveFileModal

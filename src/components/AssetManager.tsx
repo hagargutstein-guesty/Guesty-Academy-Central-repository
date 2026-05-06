@@ -37,7 +37,7 @@ export function FolderCascader({ folders, selectedFolderId, onChange }: { folder
   const renderColumn = (columnFolders: any[], level: number) => {
     if (columnFolders.length === 0) return null;
     return (
-      <div key={level} className="w-48 border-r border-gray-200 overflow-y-auto bg-white shrink-0">
+      <div key={`col-${level}`} className="w-48 border-r border-gray-200 overflow-y-auto bg-white shrink-0">
         {columnFolders.map(folder => {
           const hasChildren = getChildren(folder.id).length > 0;
           const isActive = activePath[level] === folder.id;
@@ -581,8 +581,8 @@ export function EditAssetModal({
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Tags</label>
             <div className="w-full p-2 bg-white border border-gray-200 rounded-[8px] focus-within:border-[#2D5A56] focus-within:ring-1 focus-within:ring-[#2D5A56] transition-all flex flex-wrap gap-2">
-              {tags.map((tag, index) => (
-                <span key={index} className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-[4px] text-xs font-bold">
+              {tags.map((tag) => (
+                <span key={`tag-${tag}`} className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-[4px] text-xs font-bold">
                   {tag}
                   <button onClick={() => handleRemoveTag(tag)} className="text-gray-400 hover:text-gray-900">
                     <X className="w-3 h-3" />
