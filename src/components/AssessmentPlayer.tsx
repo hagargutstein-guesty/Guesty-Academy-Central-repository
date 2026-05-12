@@ -10,7 +10,8 @@ import {
   RotateCcw,
   Trophy,
   Target,
-  ExternalLink
+  ExternalLink,
+  BarChart3
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Assessment, Question, Answer, QuestionType, AssessmentAttempt } from "../types";
@@ -50,6 +51,8 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
   const [gradingResult, setGradingResult] = useState<GradingResult | null>(null);
   const [timeLeft, setTimeLeft] = useState(assessment.settings.timeLimit * 60);
   const [isTimeUp, setIsTimeUp] = useState(false);
+
+  const isSurvey = assessment.subType === "Survey";
 
   // Shuffle questions if setting is enabled
   const shuffledQuestions = useMemo(() => {
@@ -144,7 +147,8 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
       passed: result.isPassed,
       started_at: startTime,
       completed_at: new Date().toISOString(),
-      responses
+      responses,
+      status: 'Submitted'
     };
     
     onAttemptComplete?.(attempt);
@@ -153,6 +157,41 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
   const progress = ((currentQuestionIndex + 1) / shuffledQuestions.length) * 100;
 
   if (isFinished && gradingResult) {
+    if (isSurvey) {
+      return (
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md w-full space-y-8"
+          >
+            <div className="w-24 h-24 mx-auto rounded-[32px] bg-[#FF9D00] flex items-center justify-center text-white shadow-2xl shadow-[#FF9D00]/20">
+              <CheckCircle2 className="w-12 h-12" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-4xl font-black text-gray-900 tracking-tight">Thank you!</h2>
+              <p className="text-gray-500 font-medium">Your feedback has been successfully recorded.</p>
+            </div>
+
+            <div className="p-8 bg-gray-50 rounded-[32px] border border-gray-100 flex flex-col items-center justify-center">
+              <BarChart3 className="w-10 h-10 text-[#FF9D00]/20 mb-4" />
+              <p className="text-sm font-bold text-gray-600">Your responses will help us improve our training programs for all learners.</p>
+            </div>
+
+            <div className="pt-8">
+              <button 
+                onClick={onClose}
+                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-black/10"
+              >
+                {isPreview ? "Back to Editor" : "Return to Home"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
       <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
         <motion.div 
@@ -280,13 +319,16 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
       {/* Header */}
       <div className="h-20 border-b border-gray-100 px-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-guesty-ice/30 rounded-xl flex items-center justify-center text-guesty-nature border border-guesty-nature/10">
-            <Target className="w-5 h-5" />
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center border transition-all",
+            isSurvey ? "bg-[#FF9D00]/10 text-[#FF9D00] border-[#FF9D00]/10" : "bg-guesty-ice/30 text-guesty-nature border-guesty-nature/10"
+          )}>
+            {isSurvey ? <BarChart3 className="w-5 h-5" /> : <Target className="w-5 h-5" />}
           </div>
           <div>
             <h1 className="text-lg font-black text-gray-900 tracking-tight">{assessment.title}</h1>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-              Question {currentQuestionIndex + 1} of {shuffledQuestions.length}
+              {isSurvey ? "Survey" : "Quiz"} Section • Question {currentQuestionIndex + 1} of {shuffledQuestions.length}
             </p>
           </div>
         </div>
@@ -326,7 +368,7 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
         <motion.div 
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
-          className="h-full bg-guesty-nature"
+          className={cn("h-full", isSurvey ? "bg-[#FF9D00]" : "bg-guesty-nature")}
         />
       </div>
 
@@ -343,12 +385,22 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
             >
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 bg-guesty-ice text-guesty-nature rounded-lg text-[10px] font-black uppercase tracking-widest">
+                  <span className={cn(
+                    "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest",
+                    isSurvey ? "bg-[#FF9D00]/10 text-[#FF9D00]" : "bg-guesty-ice text-guesty-nature"
+                  )}>
                     {currentQuestion.type.replace('_', ' ')}
                   </span>
-                  <span className="text-[10px] font-bold text-gray-400">
-                    {currentQuestion.points} Points Possible
-                  </span>
+                  {!isSurvey && (
+                    <span className="text-[10px] font-bold text-gray-400">
+                      {currentQuestion.points} Points Possible
+                    </span>
+                  )}
+                  {isSurvey && (
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      Your response is anonymous
+                    </span>
+                  )}
                 </div>
                 
                 <h2 className="text-3xl font-black text-gray-900 tracking-tight leading-tight">
@@ -369,8 +421,44 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
                     value={(responses[currentQuestion.id] as string) || ""}
                     onChange={(e) => handleTextChange(currentQuestion.id, e.target.value)}
                     placeholder="Type your response here..."
-                    className="w-full min-h-[200px] p-8 text-lg font-bold text-gray-800 bg-gray-50 border border-gray-100 rounded-[32px] focus:bg-white focus:border-guesty-nature focus:ring-8 focus:ring-guesty-nature/5 transition-all outline-none resize-none"
+                    className={cn(
+                      "w-full min-h-[200px] p-8 text-lg font-bold text-gray-800 bg-gray-50 border border-gray-100 rounded-[32px] transition-all outline-none resize-none",
+                      isSurvey ? "focus:border-[#FF9D00] focus:ring-[#FF9D00]/5" : "focus:bg-white focus:border-guesty-nature focus:ring-8 focus:ring-guesty-nature/5"
+                    )}
                   />
+                ) : currentQuestion.type === "likert_scale" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    {currentQuestion.answers.map((answer, idx) => {
+                      const isSelected = responses[currentQuestion.id] === answer.id;
+                      return (
+                        <button
+                          key={answer.id}
+                          onClick={() => handleSelect(currentQuestion.id, answer.id)}
+                          className={cn(
+                            "flex flex-col items-center justify-center p-6 rounded-3xl border-2 transition-all gap-4 text-center group",
+                            isSelected 
+                              ? "bg-[#FF9D00]/10 border-[#FF9D00] shadow-lg shadow-[#FF9D00]/10 scale-[1.02]" 
+                              : "bg-white border-gray-100 hover:border-gray-200"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all text-sm font-black",
+                            isSelected 
+                              ? "bg-[#FF9D00] border-[#FF9D00] text-white" 
+                              : "bg-white border-gray-100 text-gray-300 group-hover:border-[#FF9D00]/30"
+                          )}>
+                            {idx + 1}
+                          </div>
+                          <span className={cn(
+                            "text-xs font-bold leading-tight",
+                            isSelected ? "text-gray-900" : "text-gray-500"
+                          )}>
+                            {answer.content}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 ) : (
                   shuffledAnswers.map((answer) => {
                     const isSelected = Array.isArray(responses[currentQuestion.id]) 
@@ -384,14 +472,14 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
                         className={cn(
                           "w-full text-left p-6 rounded-3xl border-2 transition-all flex items-center gap-4 group",
                           isSelected 
-                            ? "bg-guesty-ice/30 border-guesty-nature shadow-lg shadow-guesty-nature/10 scale-[1.02]" 
+                            ? (isSurvey ? "bg-[#FF9D00]/5 border-[#FF9D00] shadow-lg shadow-[#FF9D00]/5" : "bg-guesty-ice/30 border-guesty-nature shadow-lg shadow-guesty-nature/10 scale-[1.02]")
                             : "bg-white border-gray-100 hover:border-gray-200"
                         )}
                       >
                         <div className={cn(
                           "w-8 h-8 rounded-xl flex items-center justify-center border-2 shrink-0 transition-all",
                           isSelected 
-                            ? "bg-guesty-nature border-guesty-nature text-white" 
+                            ? (isSurvey ? "bg-[#FF9D00] border-[#FF9D00] text-white" : "bg-guesty-nature border-guesty-nature text-white")
                             : "bg-white border-gray-200 text-transparent group-hover:border-guesty-nature/30"
                         )}>
                           <CheckCircle2 className="w-5 h-5" />
@@ -434,7 +522,10 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
           {currentQuestionIndex < shuffledQuestions.length - 1 ? (
             <button 
               onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-              className="flex items-center gap-2 px-10 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-black/10"
+              className={cn(
+                "flex items-center gap-2 px-10 py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl",
+                isSurvey ? "bg-[#FF9D00] shadow-[#FF9D00]/10 hover:opacity-90" : "bg-gray-900 hover:bg-black shadow-black/10"
+              )}
             >
               Next Question
               <ChevronRight className="w-5 h-5" />
@@ -442,10 +533,13 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
           ) : (
             <button 
               onClick={handleSubmit}
-              className="flex items-center gap-3 px-12 py-4 bg-guesty-nature text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-guesty-nature/20"
+              className={cn(
+                "flex items-center gap-3 px-12 py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl",
+                isSurvey ? "bg-[#FF9D00] shadow-[#FF9D00]/20 hover:opacity-90" : "bg-guesty-nature hover:bg-black shadow-guesty-nature/20"
+              )}
             >
               <Send className="w-5 h-5" />
-              Finish Assessment
+              {isSurvey ? "Submit Feedback" : "Finish Assessment"}
             </button>
           )}
         </div>

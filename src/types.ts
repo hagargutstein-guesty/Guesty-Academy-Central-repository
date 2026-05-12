@@ -50,7 +50,7 @@ export interface FileItem {
   assessmentData?: Assessment; // For assessments stored as learning objects
 }
 
-export type QuestionType = "single_choice" | "multiple_choice" | "open_ended";
+export type QuestionType = "single_choice" | "multiple_choice" | "open_ended" | "likert_scale";
 
 export interface Answer {
   id: string;
@@ -135,20 +135,29 @@ export interface Course {
   useDynamicThumbnail?: boolean;
 }
 
+export interface QuestionGrade {
+  score: number;
+  max_score: number;
+  feedback: string;
+  feedback_images?: string[];
+}
+
 export interface AssessmentAttempt {
   id: string;
   assessment_id: string;
-  course_id?: string; // Optional: if taken within a course context
+  course_id?: string;
   user_id: string;
   user_name: string;
-  group_ids: string[]; // Groups the user belonged to at the time of the attempt
+  group_ids: string[];
   score: number;
   max_score: number;
   percentage: number;
   passed: boolean;
   started_at: string;
   completed_at: string;
-  responses: Record<string, string | string[]>;
+  responses: Record<string, string | string[] | { text: string; files: string[] }>;
+  manual_grades?: Record<string, QuestionGrade>;
+  status: 'In Progress' | 'Submitted' | 'Graded';
 }
 
 export interface Assessment {
@@ -156,6 +165,7 @@ export interface Assessment {
   tenant_id: string;
   title: string;
   description?: string;
+  subType?: 'Quiz' | 'Survey';
   passing_score: number; // percentage
   answer_key_url?: string; // Google Drive link for instructors
   settings: AssessmentSettings;

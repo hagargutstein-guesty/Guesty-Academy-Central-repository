@@ -12,6 +12,7 @@ import {
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './lib/imageUtils';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
+import { GradingInbox } from './components/GradingInbox';
 import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse } from './types';
 import { ROOT_FOLDERS } from './constants';
 import { cn } from './lib/utils';
@@ -319,6 +320,48 @@ const initialRepository = [
             { id: 'ans6', question_id: 'q2', content: 'Date of Birth', is_correct: true },
             { id: 'ans7', question_id: 'q2', content: 'Office Location', is_correct: false }
           ]
+        }
+      ]
+    }
+  },
+  { 
+    id: 'a8', 
+    title: 'Customer Support Certification', 
+    type: 'Assessment', 
+    version: 'v1.0', 
+    status: 'Active', 
+    folderId: 'f1', 
+    createdAt: '2026-05-10',
+    assessmentData: {
+      id: 'a8',
+      tenant_id: 'default-tenant',
+      title: 'Customer Support Certification',
+      passing_score: 75,
+      settings: {
+        timeLimit: 30,
+        shuffleQuestions: false,
+        shuffleAnswers: false,
+        maxAttempts: 1,
+        scoringType: 'partial'
+      },
+      questions: [
+        {
+          id: 'q8-1',
+          assessment_id: 'a8',
+          type: 'open_ended',
+          content: 'Explain how you would handle a customer who is angry about a delayed refund.',
+          points: 50,
+          order_index: 0,
+          answers: []
+        },
+        {
+          id: 'q8-2',
+          assessment_id: 'a8',
+          type: 'open_ended',
+          content: 'Describe the core values of our customer success department and how they apply to daily interactions.',
+          points: 50,
+          order_index: 1,
+          answers: []
         }
       ]
     }
@@ -733,7 +776,44 @@ export default function App() {
       responses: {
         "q1": "ans2",
         "q2": ["ans4", "ans6"]
-      }
+      },
+      status: 'Graded'
+    },
+    {
+      id: "att-2",
+      assessment_id: "a8",
+      user_id: "u2",
+      user_name: "John Doe",
+      group_ids: ["g4"],
+      score: 0,
+      max_score: 100,
+      percentage: 0,
+      passed: false,
+      started_at: '2026-05-10T10:00:00Z',
+      completed_at: '2026-05-10T10:25:00Z',
+      responses: {
+        'q8-1': { text: 'I would first apologize for the delay and empathize with their situation. Then I would check the status of the refund and explain the next steps clearly.', files: [] },
+        'q8-2': { text: 'Core values are empathy, efficiency, and clarity. They apply by being patient and providing accurate information.', files: ['https://example.com/notes.pdf'] }
+      },
+      status: 'Submitted'
+    },
+    {
+      id: "att-3",
+      assessment_id: "a8",
+      user_id: "u5",
+      user_name: "Emma Wilson",
+      group_ids: ["g5"],
+      score: 0,
+      max_score: 100,
+      percentage: 0,
+      passed: false,
+      started_at: '2026-05-11T14:00:00Z',
+      completed_at: '2026-05-11T14:45:00Z',
+      responses: {
+        'q8-1': { text: 'Emotional intelligence is key. I would listen active and confirm I understand their frustration before providing a solution.', files: [] },
+        'q8-2': { text: 'Efficiency means resolving issues fast without sacrificing quality. Empathy is seeing it from their side.', files: [] }
+      },
+      status: 'Submitted'
     }
   ]));
 
@@ -914,6 +994,7 @@ export default function App() {
     { id: 'users', icon: <Users className="w-5 h-5" />, label: 'User Management' },
     { id: 'groups', icon: <ListTree className="w-5 h-5" />, label: 'Groups' },
     { id: 'courses', icon: <BookOpen className="w-5 h-5" />, label: 'Course Production' },
+    { id: 'grading-inbox', icon: <ListChecks className="w-5 h-5" />, label: 'Grading Inbox' },
     { id: 'repository', icon: <Database className="w-5 h-5" />, label: 'Central Repository' },
     { id: 'reports', icon: <BarChart3 className="w-5 h-5" />, label: 'Reports & Data' },
     { id: 'settings', icon: <Settings className="w-5 h-5" />, label: 'Platform Settings' },
@@ -3380,6 +3461,21 @@ export default function App() {
           )}
 
           {/* --- ADMIN CENTRAL REPOSITORY --- */}
+          {environment === 'admin' && activeTab === 'grading-inbox' && (
+            <div className="h-full bg-guesty-cream/5 flex flex-col overflow-hidden">
+               <GradingInbox 
+                  assessments={repository}
+                  attempts={attempts}
+                  onUpdateAttempt={handleSaveAssessmentAttempt}
+                  onReleaseGrades={(id) => {
+                    alert(`All grades for assessment ${id} have been released to learners.`);
+                    // We could update all attempts status to 'Graded' if not already, 
+                    // and maybe mark assessment as 'Grades Released'
+                  }}
+               />
+            </div>
+          )}
+
           {environment === 'admin' && activeTab === 'repository' && (
             <div className="h-full">
               <RepositoryDashboard 

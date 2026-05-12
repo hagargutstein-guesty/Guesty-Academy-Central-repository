@@ -174,7 +174,7 @@ export const AssessmentAttemptReview: React.FC<AssessmentAttemptReviewProps> = (
                     <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">Learner Response:</label>
                       <p className="text-sm font-medium text-gray-900 leading-relaxed italic">
-                        "{userResponse || "No response provided."}"
+                        "{typeof userResponse === 'string' ? (userResponse || 'No response provided.') : (userResponse as any)?.text || 'No response provided.'}"
                       </p>
                     </div>
                   ) : (

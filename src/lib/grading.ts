@@ -30,15 +30,20 @@ export function calculateAssessmentScore(
   let totalPointsEarned = 0;
   let totalPointsPossible = 0;
   
+  const isSurvey = assessment.subType === "Survey";
+  
   const questionResults: QuestionGradingResult[] = assessment.questions.map((question) => {
     const userResponse = responses[question.id];
-    const pointsPossible = question.points;
+    const pointsPossible = isSurvey ? 0 : question.points;
     totalPointsPossible += pointsPossible;
     
     let pointsEarned = 0;
-    let status: "correct" | "incorrect" | "partial" = "incorrect";
+    let status: "correct" | "incorrect" | "partial" = isSurvey ? "correct" : "incorrect";
     
-    if (question.type === "single_choice") {
+    if (isSurvey) {
+      status = "correct";
+      pointsEarned = 0;
+    } else if (question.type === "single_choice") {
       const selectedId = userResponse as string;
       const correctAnswer = question.answers.find(a => a.is_correct);
       if (selectedId === correctAnswer?.id) {
@@ -108,7 +113,7 @@ export function calculateAssessmentScore(
   });
 
   const percentage = totalPointsPossible > 0 ? (totalPointsEarned / totalPointsPossible) * 100 : 0;
-  const isPassed = percentage >= assessment.passing_score;
+  const isPassed = isSurvey ? true : percentage >= assessment.passing_score;
 
   return {
     score: totalPointsEarned,

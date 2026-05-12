@@ -2,6 +2,7 @@ import React from "react";
 import { MoreVertical, FileText, Video, FileArchive, History, Link2, Edit3, Trash2, Archive, BarChart3, Eye, Layers, Globe, Link, FileCode, Tag, HelpCircle, Presentation } from "lucide-react";
 import { FileItem } from "../types";
 import { motion, AnimatePresence } from "motion/react";
+import { cn } from "../lib/utils";
 
 interface FileTableRowProps {
   file: FileItem;
@@ -50,6 +51,12 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
   }, []);
 
   const getIcon = () => {
+    if (file.type === "Assessment") {
+      if (file.assessmentData?.subType === "Survey") {
+        return <BarChart3 className="w-4 h-4 text-[#FF9D00]" />;
+      }
+      return <HelpCircle className="w-4 h-4 text-guesty-nature" />;
+    }
     switch (file.type) {
       case "Video": return <Video className="w-4 h-4 text-guesty-ocean" />;
       case "SCORM": return <FileArchive className="w-4 h-4 text-guesty-merlot" />;
@@ -57,7 +64,6 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
       case "HTML": return <Globe className="w-4 h-4 text-guesty-nature" />;
       case "Link": return <Link className="w-4 h-4 text-guesty-ocean" />;
       case "PPTX": return <Presentation className="w-4 h-4 text-[#A43721]" />;
-      case "Assessment": return <HelpCircle className="w-4 h-4 text-guesty-nature" />;
       default: return <FileText className="w-4 h-4 text-guesty-nature" />;
     }
   };
@@ -101,7 +107,12 @@ const FileTableRow: React.FC<FileTableRowProps> = ({
       )}
       {visibleColumns.includes('type') && (
         <td className="px-6 py-4">
-          <span className="text-[10px] font-bold text-guesty-forest/40 uppercase tracking-widest">{file.type}</span>
+          <span className={cn(
+            "text-[10px] font-bold uppercase tracking-widest",
+            file.assessmentData?.subType === "Survey" ? "text-[#FF9D00]" : "text-guesty-forest/40"
+          )}>
+            {file.type === "Assessment" && file.assessmentData?.subType ? file.assessmentData.subType : file.type}
+          </span>
         </td>
       )}
       {visibleColumns.includes('created') && (

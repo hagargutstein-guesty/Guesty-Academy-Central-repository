@@ -18,7 +18,9 @@ import {
   Eye,
   Link,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  Info,
+  Activity
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Assessment, Question, Answer, QuestionType, AssessmentAttempt } from "../types";
@@ -47,6 +49,7 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
     id: uuidv4(),
     tenant_id: "default-tenant",
     title: "New Assessment",
+    subType: "Quiz",
     description: "",
     passing_score: 80,
     settings: {
@@ -59,10 +62,13 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
     questions: []
   });
 
+  const isSurvey = assessment.subType === "Survey";
+
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
     assessment.questions[0]?.id || null
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showSurveyOverlay, setShowSurveyOverlay] = useState(false);
 
   const activeQuestion = assessment.questions.find(q => q.id === activeQuestionId);
 
@@ -73,13 +79,20 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
       id: uuidv4(),
       assessment_id: assessment.id,
       type,
-      content: "New Question",
-      points: 1,
+      content: type === "likert_scale" ? "How satisfied are you with..." : "New Question",
+      points: isSurvey ? 0 : 1,
       order_index: assessment.questions.length,
-      answers: type === "open_ended" ? [] : [
-        { id: uuidv4(), question_id: "", content: "Option 1", is_correct: true },
-        { id: uuidv4(), question_id: "", content: "Option 2", is_correct: false }
-      ]
+      answers: type === "open_ended" ? [] : 
+               type === "likert_scale" ? [
+                 { id: uuidv4(), question_id: "", content: "Strongly Disagree", is_correct: false },
+                 { id: uuidv4(), question_id: "", content: "Disagree", is_correct: false },
+                 { id: uuidv4(), question_id: "", content: "Neutral", is_correct: false },
+                 { id: uuidv4(), question_id: "", content: "Agree", is_correct: false },
+                 { id: uuidv4(), question_id: "", content: "Strongly Agree", is_correct: false }
+               ] : [
+                 { id: uuidv4(), question_id: "", content: "Option 1", is_correct: !isSurvey },
+                 { id: uuidv4(), question_id: "", content: "Option 2", is_correct: false }
+               ]
     };
     setAssessment(prev => ({
       ...prev,
@@ -148,9 +161,11 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
       // Basic validation
       if (assessment.questions.length === 0) throw new Error("Add at least one question.");
       
-      for (const q of assessment.questions) {
-        if (q.type !== "open_ended" && !q.answers.some(a => a.is_correct)) {
-          throw new Error(`Question "${q.content}" requires at least one correct answer.`);
+      if (!isSurvey) {
+        for (const q of assessment.questions) {
+          if (q.type !== "open_ended" && q.type !== "likert_scale" && !q.answers.some(a => a.is_correct)) {
+            throw new Error(`Question "${q.content}" requires at least one correct answer.`);
+          }
         }
       }
 
@@ -200,14 +215,103 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
   };
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] bg-white overflow-hidden rounded-3xl border border-gray-100 shadow-xl">
+    <div className={cn(
+      "flex h-[calc(100vh-12rem)] bg-white overflow-hidden rounded-3xl border border-gray-100 shadow-xl",
+      isSurvey && "ring-2 ring-[#FF9D00]/20"
+    )}>
+      {/* --- Survey Informational Overlay --- */}
+      <AnimatePresence>
+        {showSurveyOverlay && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSurveyOverlay(false)}
+            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-[32px] p-10 max-w-lg shadow-2xl border border-[#FF9D00]/20"
+            >
+              <div className="w-20 h-20 bg-[#FF9D00]/10 rounded-[28px] flex items-center justify-center mb-8 mx-auto">
+                <Settings2 className="w-10 h-10 text-[#FF9D00]" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 text-center mb-4">Survey Mode Active</h3>
+              <div className="space-y-4 text-center">
+                <p className="text-gray-600 leading-relaxed">
+                  In survey mode, all grading functionalities are stripped:
+                </p>
+                <div className="flex flex-col gap-3 text-left bg-gray-50 p-6 rounded-2xl">
+                  <div className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-[10px]">✓</div>
+                    No Correct Answers or Points
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-[10px]">✓</div>
+                    No Passing Scores or Feedback
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-[10px]">✓</div>
+                    New Question Type: Likert Scale
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-[10px]">✓</div>
+                    Aggregated Anonymous Reporting
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSurveyOverlay(false)}
+                className="w-full mt-8 py-4 bg-[#FF9D00] text-white rounded-2xl font-black text-sm hover:opacity-90 transition-all uppercase tracking-widest"
+              >
+                Got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* --- Left Pane: Question Navigation --- */}
       <div className="w-1/4 min-w-[300px] border-r border-gray-50 flex flex-col bg-gray-50/50">
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-lg font-black text-gray-900 tracking-tight">Questions</h3>
-          <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-full uppercase tracking-widest">
-            {assessment.questions.length} total
-          </span>
+        <div className="p-6 border-b border-gray-100 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-black text-gray-900 tracking-tight">Questions</h3>
+            <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-full uppercase tracking-widest">
+              {assessment.questions.length} total
+            </span>
+          </div>
+
+          {/* Quiz / Survey Toggle */}
+          <div className="flex p-1 bg-white rounded-xl border border-gray-100 shadow-sm">
+            <button 
+              onClick={() => {
+                setAssessment(prev => ({ ...prev, subType: 'Quiz' }));
+              }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                !isSurvey ? "bg-guesty-nature text-white shadow-md shadow-guesty-nature/20" : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              Quiz
+            </button>
+            <button 
+              onClick={() => {
+                const isChangingToSurvey = !isSurvey;
+                setAssessment(prev => ({ ...prev, subType: 'Survey' }));
+                if (isChangingToSurvey) {
+                  setShowSurveyOverlay(true);
+                }
+              }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                isSurvey ? "bg-[#FF9D00] text-white shadow-md shadow-[#FF9D00]/20" : "text-gray-400 hover:text-gray-600"
+              )}
+            >
+              Survey
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
@@ -282,6 +386,15 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
             <Plus className="w-4 h-4 text-guesty-nature group-hover:scale-110 transition-transform" />
             <span className="text-xs font-bold text-guesty-nature">Multi</span>
           </button>
+          {isSurvey && (
+            <button 
+              onClick={() => addQuestion("likert_scale")}
+              className="col-span-2 flex items-center justify-center gap-2 p-3 bg-[#FF9D00]/10 hover:bg-[#FF9D00]/20 rounded-xl transition-all border border-transparent hover:border-[#FF9D00]/30 group"
+            >
+              <Plus className="w-4 h-4 text-[#FF9D00] group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-[#FF9D00]">Likert Scale</span>
+            </button>
+          )}
           <button 
             onClick={() => addQuestion("open_ended")}
             className="col-span-2 flex items-center justify-center gap-2 p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all border border-transparent hover:border-gray-300 group"
@@ -324,18 +437,26 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                 <section className="space-y-6">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Question Stem</h4>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                        <Target className="w-3.5 h-3.5 text-guesty-nature" />
-                        <label className="text-[10px] font-black text-gray-500 uppercase">Points:</label>
-                        <input 
-                          type="number"
-                          value={activeQuestion.points}
-                          onChange={(e) => updateQuestion(activeQuestion.id, { points: parseInt(e.target.value) || 0 })}
-                          className="w-12 bg-transparent text-xs font-black text-guesty-nature focus:outline-none"
-                        />
+                    {!isSurvey && (
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+                          <Target className="w-3.5 h-3.5 text-guesty-nature" />
+                          <label className="text-[10px] font-black text-gray-500 uppercase">Points:</label>
+                          <input 
+                            type="number"
+                            value={activeQuestion.points}
+                            onChange={(e) => updateQuestion(activeQuestion.id, { points: parseInt(e.target.value) || 0 })}
+                            className="w-12 bg-transparent text-xs font-black text-guesty-nature focus:outline-none"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    {isSurvey && (
+                      <div className="flex items-center gap-2 bg-[#FF9D00]/10 px-3 py-1.5 rounded-full border border-[#FF9D00]/20">
+                        <Info className="w-3 h-3 text-[#FF9D00]" />
+                        <span className="text-[10px] font-black text-[#FF9D00] uppercase">Feedback Only (Survey)</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4">
@@ -371,12 +492,12 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                 </section>
 
                 {/* Answers / Options */}
-                {activeQuestion.type !== "open_ended" && (
+                {(activeQuestion.type !== "open_ended" && activeQuestion.type !== "likert_scale") && (
                   <section className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Answer Options</h4>
-                        {activeQuestion.type === "multiple_choice" && (
+                        {(activeQuestion.type === "multiple_choice" && !isSurvey) && (
                           <div className="flex items-center gap-2 bg-guesty-ice/20 px-3 py-1 rounded-full border border-guesty-nature/10">
                             <span className="text-[10px] font-black text-guesty-nature uppercase">Partial Credit:</span>
                             <button 
@@ -400,7 +521,10 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                         onClick={() => updateQuestion(activeQuestion.id, {
                           answers: [...activeQuestion.answers, { id: uuidv4(), question_id: activeQuestion.id, content: `Option ${activeQuestion.answers.length + 1}`, is_correct: false }]
                         })}
-                        className="text-xs font-black text-guesty-nature flex items-center gap-2 hover:bg-guesty-ice px-3 py-1.5 rounded-full transition-colors"
+                        className={cn(
+                          "text-xs font-black flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors",
+                          isSurvey ? "text-[#FF9D00] hover:bg-[#FF9D00]/10" : "text-guesty-nature hover:bg-guesty-ice"
+                        )}
                       >
                         <Plus className="w-4 h-4" /> Add Option
                       </button>
@@ -412,31 +536,39 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                           key={answer.id}
                           className={cn(
                             "group p-6 rounded-3xl border transition-all flex flex-col gap-4",
-                            answer.is_correct 
+                            answer.is_correct && !isSurvey
                               ? "bg-guesty-ice/30 border-guesty-nature/30 ring-1 ring-guesty-nature/10" 
                               : "bg-gray-50/30 border-gray-100 hover:border-gray-200"
                           )}
                         >
                           <div className="flex items-start gap-4">
-                            <button 
-                              onClick={() => {
-                                let newAnswers;
-                                if (activeQuestion.type === "single_choice") {
-                                  newAnswers = activeQuestion.answers.map(a => ({ ...a, is_correct: a.id === answer.id }));
-                                } else {
-                                  newAnswers = activeQuestion.answers.map(a => a.id === answer.id ? { ...a, is_correct: !a.is_correct } : a);
-                                }
-                                updateQuestion(activeQuestion.id, { answers: newAnswers });
-                              }}
-                              className={cn(
-                                "flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all",
-                                answer.is_correct 
-                                  ? "bg-guesty-nature border-guesty-nature text-white shadow-lg shadow-guesty-nature/30" 
-                                  : "bg-white border-gray-200 text-transparent hover:border-guesty-nature/50"
-                              )}
-                            >
-                              <CheckCircle2 className="w-5 h-5" />
-                            </button>
+                            {!isSurvey && (
+                              <button 
+                                onClick={() => {
+                                  let newAnswers;
+                                  if (activeQuestion.type === "single_choice") {
+                                    newAnswers = activeQuestion.answers.map(a => ({ ...a, is_correct: a.id === answer.id }));
+                                  } else {
+                                    newAnswers = activeQuestion.answers.map(a => a.id === answer.id ? { ...a, is_correct: !a.is_correct } : a);
+                                  }
+                                  updateQuestion(activeQuestion.id, { answers: newAnswers });
+                                }}
+                                className={cn(
+                                  "flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all",
+                                  answer.is_correct 
+                                    ? "bg-guesty-nature border-guesty-nature text-white shadow-lg shadow-guesty-nature/30" 
+                                    : "bg-white border-gray-200 text-transparent hover:border-guesty-nature/50"
+                                )}
+                              >
+                                <CheckCircle2 className="w-5 h-5" />
+                              </button>
+                            )}
+
+                            {isSurvey && (
+                              <div className="w-8 h-8 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-300 font-black text-xs">
+                                {aIdx + 1}
+                              </div>
+                            )}
 
                             <div className="flex-1 space-y-3">
                               <input
@@ -448,7 +580,7 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                               />
                               
                               <div className="grid grid-cols-2 gap-4">
-                                {activeQuestion.scoring_type === "partial" && answer.is_correct && (
+                                {activeQuestion.scoring_type === "partial" && answer.is_correct && !isSurvey && (
                                   <div className="space-y-1">
                                     <label className="text-[10px] font-black text-guesty-nature uppercase tracking-widest">Points for this Opt</label>
                                     <input
@@ -461,18 +593,20 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                                     />
                                   </div>
                                 )}
-                                <div className={cn("space-y-1", (activeQuestion.scoring_type !== "partial" || !answer.is_correct) && "col-span-2")}>
-                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Feedback (Optional)</label>
-                                  <input
-                                    value={answer.feedback || ""}
-                                    onChange={(e) => updateQuestion(activeQuestion.id, {
-                                      answers: activeQuestion.answers.map(a => a.id === answer.id ? { ...a, feedback: e.target.value } : a)
-                                    })}
-                                    placeholder="Explanation for this choice..."
-                                    className="w-full bg-white/50 border border-gray-100 p-2 rounded-xl text-xs focus:outline-none focus:border-guesty-nature transition-all"
-                                  />
-                                </div>
-                                <div className="flex items-end justify-end gap-2">
+                                {!isSurvey && (
+                                  <div className={cn("space-y-1", (activeQuestion.scoring_type !== "partial" || !answer.is_correct) && "col-span-2")}>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Feedback (Optional)</label>
+                                    <input
+                                      value={answer.feedback || ""}
+                                      onChange={(e) => updateQuestion(activeQuestion.id, {
+                                        answers: activeQuestion.answers.map(a => a.id === answer.id ? { ...a, feedback: e.target.value } : a)
+                                      })}
+                                      placeholder="Explanation for this choice..."
+                                      className="w-full bg-white/50 border border-gray-100 p-2 rounded-xl text-xs focus:outline-none focus:border-guesty-nature transition-all"
+                                    />
+                                  </div>
+                                )}
+                                <div className={cn("flex items-end justify-end gap-2", isSurvey && "col-span-2")}>
                                   {answer.media_url ? (
                                     <div className="relative w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gray-100 group/img shadow-sm">
                                       <img src={answer.media_url} className="w-full h-full object-cover" />
@@ -512,6 +646,26 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                   </section>
                 )}
 
+                {activeQuestion.type === "likert_scale" && (
+                  <section className="space-y-6">
+                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Likert Scale Options</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {activeQuestion.answers.map((answer, aIdx) => (
+                        <div key={answer.id} className="flex-1 min-w-[120px] p-4 bg-gray-50 border border-gray-100 rounded-2xl space-y-2">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{aIdx + 1}</span>
+                          <input
+                            value={answer.content}
+                            onChange={(e) => updateQuestion(activeQuestion.id, {
+                              answers: activeQuestion.answers.map(a => a.id === answer.id ? { ...a, content: e.target.value } : a)
+                            })}
+                            className="w-full bg-transparent text-sm font-bold text-gray-800 placeholder:text-gray-300 focus:outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 {activeQuestion.type === "open_ended" && (
                   <div className="flex flex-col items-center justify-center p-12 bg-gray-50 border border-dashed border-gray-200 rounded-[32px] text-center">
                     <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mb-4 shadow-sm border border-gray-100 text-gray-400">
@@ -525,35 +679,49 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                 )}
 
                 {/* Automated Feedback Section */}
-                <section className="space-y-6 pt-6 border-t border-gray-50">
-                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Automated Feedback</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-guesty-nature uppercase tracking-widest flex items-center gap-2">
-                        <CheckCircle2 className="w-3 h-3" /> Correct Feedback
-                      </label>
-                      <textarea
-                        value={activeQuestion.correct_feedback || ""}
-                        onChange={(e) => updateQuestion(activeQuestion.id, { correct_feedback: e.target.value })}
-                        placeholder="Message for correct answers..."
-                        rows={2}
-                        className="w-full p-4 bg-guesty-ice/20 border border-guesty-nature/10 rounded-2xl text-xs font-bold focus:outline-none focus:border-guesty-nature transition-all resize-none"
-                      />
+                {!isSurvey && (
+                  <section className="space-y-6 pt-6 border-t border-gray-50">
+                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Automated Feedback</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-guesty-nature uppercase tracking-widest flex items-center gap-2">
+                          <CheckCircle2 className="w-3 h-3" /> Correct Feedback
+                        </label>
+                        <textarea
+                          value={activeQuestion.correct_feedback || ""}
+                          onChange={(e) => updateQuestion(activeQuestion.id, { correct_feedback: e.target.value })}
+                          placeholder="Message for correct answers..."
+                          rows={2}
+                          className="w-full p-4 bg-guesty-ice/20 border border-guesty-nature/10 rounded-2xl text-xs font-bold focus:outline-none focus:border-guesty-nature transition-all resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2">
+                          <AlertCircle className="w-3 h-3" /> Incorrect Feedback
+                        </label>
+                        <textarea
+                          value={activeQuestion.incorrect_feedback || ""}
+                          onChange={(e) => updateQuestion(activeQuestion.id, { incorrect_feedback: e.target.value })}
+                          placeholder="Message for incorrect answers..."
+                          rows={2}
+                          className="w-full p-4 bg-red-50/50 border border-red-100 rounded-2xl text-xs font-bold focus:outline-none focus:border-red-400 transition-all resize-none"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2">
-                        <AlertCircle className="w-3 h-3" /> Incorrect Feedback
-                      </label>
-                      <textarea
-                        value={activeQuestion.incorrect_feedback || ""}
-                        onChange={(e) => updateQuestion(activeQuestion.id, { incorrect_feedback: e.target.value })}
-                        placeholder="Message for incorrect answers..."
-                        rows={2}
-                        className="w-full p-4 bg-red-50/50 border border-red-100 rounded-2xl text-xs font-bold focus:outline-none focus:border-red-400 transition-all resize-none"
-                      />
+                  </section>
+                )}
+
+                {isSurvey && (
+                  <section className="space-y-6 pt-6 border-t border-gray-50">
+                    <div className="flex items-center gap-3">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Submission Completion</h4>
+                      <div className="px-2 py-0.5 bg-[#FF9D00]/10 text-[#FF9D00] text-[8px] font-black uppercase rounded-full">Automatic</div>
                     </div>
-                  </div>
-                </section>
+                    <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 italic text-sm text-gray-500">
+                      Surveys are marked as "Completed" immediately upon submission regardless of responses.
+                    </div>
+                  </section>
+                )}
               </div>
             </motion.div>
           ) : (
@@ -588,18 +756,35 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                 </div>
               </div>
               {/* Passing Score */}
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Passing %</label>
-                <div className="relative">
-                  <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                  <input 
-                    type="number"
-                    value={assessment.passing_score}
-                    onChange={(e) => setAssessment(prev => ({ ...prev, passing_score: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) }))}
-                    className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold focus:bg-white focus:border-guesty-nature transition-all outline-none"
-                  />
+              {!isSurvey && (
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Passing %</label>
+                  <div className="relative">
+                    <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input 
+                      type="number"
+                      value={assessment.passing_score}
+                      onChange={(e) => setAssessment(prev => ({ ...prev, passing_score: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                      className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold focus:bg-white focus:border-guesty-nature transition-all outline-none"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+              {isSurvey && (
+                <div>
+                  <label className="text-[10px] font-black text-[#FF9D00] uppercase tracking-widest block mb-1.5 opacity-50">Passing %</label>
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gray-100/50 rounded-xl z-10 cursor-not-allowed" />
+                    <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
+                    <input 
+                      disabled
+                      type="text"
+                      value="N/A"
+                      className="w-full pl-9 pr-3 py-2 bg-gray-100 border border-gray-100 rounded-xl text-xs font-bold text-gray-400 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
               {/* Max Attempts */}
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Attempts</label>
@@ -621,7 +806,9 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                   title="Shuffle Questions"
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-[10px] font-black uppercase tracking-widest",
-                    assessment.settings.shuffleQuestions ? "bg-guesty-ice border-guesty-nature text-guesty-nature" : "bg-gray-50 border-gray-100 text-gray-400"
+                    assessment.settings.shuffleQuestions 
+                      ? (isSurvey ? "bg-[#FF9D00]/10 border-[#FF9D00] text-[#FF9D00]" : "bg-guesty-ice border-guesty-nature text-guesty-nature") 
+                      : "bg-gray-50 border-gray-100 text-gray-400"
                   )}
                 >
                   <Shuffle className="w-3.5 h-3.5" />
@@ -632,7 +819,9 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                   title="Shuffle Answers"
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-[10px] font-black uppercase tracking-widest",
-                    assessment.settings.shuffleAnswers ? "bg-guesty-ice border-guesty-nature text-guesty-nature" : "bg-gray-50 border-gray-100 text-gray-400"
+                    assessment.settings.shuffleAnswers 
+                      ? (isSurvey ? "bg-[#FF9D00]/10 border-[#FF9D00] text-[#FF9D00]" : "bg-guesty-ice border-guesty-nature text-guesty-nature")
+                      : "bg-gray-50 border-gray-100 text-gray-400"
                   )}
                 >
                   <Shuffle className="w-3.5 h-3.5" />
@@ -658,27 +847,37 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
             {/* Actions Row */}
             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
               <div className="flex items-center gap-4">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Global Scoring:</p>
-                <div className="flex bg-gray-50 p-0.5 rounded-xl border border-gray-100">
-                  <button 
-                    onClick={() => updateSettings({ scoringType: "binary" })}
-                    className={cn(
-                      "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                      assessment.settings.scoringType === "binary" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
-                    )}
-                  >
-                    Binary
-                  </button>
-                  <button 
-                    onClick={() => updateSettings({ scoringType: "partial" })}
-                    className={cn(
-                      "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                      assessment.settings.scoringType === "partial" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
-                    )}
-                  >
-                    Partial
-                  </button>
-                </div>
+                {!isSurvey && (
+                  <>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Global Scoring:</p>
+                    <div className="flex bg-gray-50 p-0.5 rounded-xl border border-gray-100">
+                      <button 
+                        onClick={() => updateSettings({ scoringType: "binary" })}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                          assessment.settings.scoringType === "binary" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                        )}
+                      >
+                        Binary
+                      </button>
+                      <button 
+                        onClick={() => updateSettings({ scoringType: "partial" })}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                          assessment.settings.scoringType === "partial" ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                        )}
+                      >
+                        Partial
+                      </button>
+                    </div>
+                  </>
+                )}
+                {isSurvey && (
+                  <div className="flex items-center gap-2 text-[10px] font-black text-[#FF9D00] uppercase tracking-widest bg-[#FF9D00]/10 px-4 py-2 rounded-xl">
+                    <Activity className="w-3.5 h-3.5" />
+                    Aggregated Mode Only
+                  </div>
+                )}
                 {error && (
                   <p className="text-[10px] font-bold text-red-500 animate-pulse flex items-center gap-2">
                     <AlertCircle className="w-3.5 h-3.5" />
@@ -690,7 +889,12 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setIsPreviewOpen(true)}
-                  className="px-6 py-2.5 text-xs font-black text-guesty-nature hover:bg-guesty-ice rounded-xl transition-all uppercase tracking-widest border border-transparent hover:border-guesty-nature/20 flex items-center gap-2"
+                  className={cn(
+                    "px-6 py-2.5 text-xs font-black rounded-xl transition-all uppercase tracking-widest border border-transparent flex items-center gap-2",
+                    isSurvey 
+                      ? "text-[#FF9D00] hover:bg-[#FF9D00]/10 hover:border-[#FF9D00]/20" 
+                      : "text-guesty-nature hover:bg-guesty-ice hover:border-guesty-nature/20"
+                  )}
                 >
                   <Eye className="w-4 h-4" />
                   Preview
@@ -705,7 +909,12 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                 <button 
                   onClick={handleFinalSave}
                   disabled={isSaving}
-                  className="flex items-center gap-3 px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-sm hover:bg-black shadow-xl shadow-black/10 transition-all disabled:opacity-50"
+                  className={cn(
+                    "flex items-center gap-3 px-8 py-3 text-white rounded-2xl font-black text-sm shadow-xl transition-all disabled:opacity-50",
+                    isSurvey 
+                      ? "bg-[#FF9D00] hover:opacity-90 shadow-[#FF9D00]/10" 
+                      : "bg-gray-900 hover:bg-black shadow-black/10"
+                  )}
                 >
                   {isSaving ? (
                     <span className="flex items-center gap-2">
@@ -714,8 +923,8 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                     </span>
                   ) : (
                     <>
-                      <Save className="w-5 h-5 text-guesty-nature" />
-                      <span>Save Assessment</span>
+                      <Save className={cn("w-5 h-5", isSurvey ? "text-white" : "text-guesty-nature")} />
+                      <span>{isSurvey ? "Save Survey" : "Save Quiz"}</span>
                     </>
                   )}
                 </button>

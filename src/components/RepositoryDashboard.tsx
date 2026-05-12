@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { FolderPlus, Search, Plus, Database, Filter, Info, ChevronRight, Folder as FolderIcon, X, Edit3, Trash2, Archive, BarChart3, History, Link2, AlertTriangle, ChevronLeft, Columns, Download, MoreVertical, Layers, ChevronDown, CheckCircle2 } from "lucide-react";
+import { FolderPlus, Search, Plus, Database, Filter, Info, ChevronRight, Folder as FolderIcon, X, Edit3, Trash2, Archive, BarChart3, History, Link2, AlertTriangle, ChevronLeft, Columns, Download, MoreVertical, Layers, ChevronDown, CheckCircle2, HelpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Sidebar from "./Sidebar";
 import UploadModal from "./UploadModal";
@@ -15,6 +15,7 @@ import { FileItem, Folder, HistoryEntry, Assessment, AssessmentAttempt, Group, C
 import { AssessmentBuilder } from "./AssessmentBuilder";
 import { AssessmentAnalytics } from "./AssessmentAnalytics";
 import { v4 as uuidv4 } from "uuid";
+import { cn } from "../lib/utils";
 
 interface RepositoryDashboardProps {
   repository: FileItem[];
@@ -91,6 +92,19 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
   const [isAssessmentBuilderOpen, setIsAssessmentBuilderOpen] = useState(false);
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  const createMenuRef = React.useRef<HTMLDivElement>(null);
+
+  // Close create menu on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (createMenuRef.current && !createMenuRef.current.contains(event.target as Node)) {
+        setIsCreateMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const selectedFolder = useMemo(() => 
     folders.find(f => f.id === selectedFolderId) || { id: "all", name: "All Assets", rootType: "internal" }
@@ -696,16 +710,86 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
             
             <div className="w-px h-6 bg-guesty-beige mx-2" />
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setSelectedAsset(null);
-                  setIsAssessmentBuilderOpen(true);
-                }}
-                className="flex items-center space-x-2 px-4 py-3 bg-white border border-guesty-beige text-guesty-black rounded-xl text-sm font-bold hover:bg-guesty-ice transition-all active:scale-95 shadow-sm"
-              >
-                <Plus className="w-4 h-4 text-guesty-nature" />
-                <span>New Quiz</span>
-              </button>
+              <div className="relative" ref={createMenuRef}>
+                <button
+                  onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
+                  className={cn(
+                    "flex items-center space-x-2 px-4 py-3 border text-guesty-black rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm",
+                    isCreateMenuOpen ? "bg-guesty-ice border-guesty-nature" : "bg-white border-guesty-beige hover:bg-guesty-ice"
+                  )}
+                >
+                  <Plus className="w-4 h-4 text-guesty-nature" />
+                  <span>New Assessment</span>
+                  <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", isCreateMenuOpen && "rotate-180")} />
+                </button>
+
+                <AnimatePresence>
+                  {isCreateMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden py-2"
+                    >
+                      <button
+                        onClick={() => {
+                          setSelectedAsset(null);
+                          setIsAssessmentBuilderOpen(true);
+                          setIsCreateMenuOpen(false);
+                          // We need a way to tell AssessmentBuilder it's a survey or quiz
+                          // But it defaults to 'Quiz'. If I want to force Survey, I might need a temp state or pass it.
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-guesty-ice transition-colors group"
+                      >
+                        <div className="p-1.5 bg-guesty-ice rounded-lg group-hover:bg-white transition-colors">
+                          <HelpCircle className="w-4 h-4 text-guesty-nature" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold">New Quiz</p>
+                          <p className="text-[10px] text-gray-500">Graded assessment with points</p>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          // To force survey, we'll pass a partial assessment to the builder
+                          setSelectedAsset({
+                            id: 'new-survey-' + Date.now(),
+                            type: 'Assessment',
+                            folderId: selectedFolderId === 'all' ? folders[0].id : selectedFolderId,
+                            assessmentData: {
+                              id: 'survey-' + Date.now(),
+                              tenant_id: 'default-tenant',
+                              title: 'New Survey',
+                              subType: 'Survey',
+                              passing_score: 0,
+                              settings: {
+                                timeLimit: 0,
+                                shuffleQuestions: false,
+                                shuffleAnswers: false,
+                                maxAttempts: 0,
+                                scoringType: 'binary'
+                              },
+                              questions: []
+                            }
+                          } as any);
+                          setIsAssessmentBuilderOpen(true);
+                          setIsCreateMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-[#FF9D00]/10 transition-colors group"
+                      >
+                        <div className="p-1.5 bg-[#FF9D00]/10 rounded-lg group-hover:bg-white transition-colors">
+                          <BarChart3 className="w-4 h-4 text-[#FF9D00]" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold">New Survey</p>
+                          <p className="text-[10px] text-gray-500">Feedback form, no grading</p>
+                        </div>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
               
               <div className="flex items-center bg-white border border-guesty-beige rounded-xl overflow-hidden shadow-sm">
                 <button
