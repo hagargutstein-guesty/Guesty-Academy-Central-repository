@@ -5,17 +5,23 @@ import {
   Compass, Home, Users, BarChart3, Settings, Plus, Edit2, Archive,
   FileVideo, FileText, HelpCircle, RefreshCw, Layers, Info, X, Check, Database,
   ArrowRight, ArrowLeft, Globe, FileArchive, UploadCloud, Package,
-  Play, Pause, SkipForward, SkipBack, MonitorPlay, ListChecks, Video, ArchiveRestore, History, ChevronDown, ChevronUp, ExternalLink, ChevronLeft,
+  Play, Pause, SkipForward, SkipBack, MonitorPlay, ListChecks, Video, ArchiveRestore, History, ChevronDown, ChevronUp, ExternalLink, ChevronLeft, ClipboardList,
   Shield, UserCheck, UserCog, Filter, Download, MoreVertical, Activity, GitMerge, Eye, Trash2, Mail, Key, ShieldAlert, LockKeyhole, UserPlus, ListTree, Link, Briefcase,
   Zap, CheckCircle2, Building, MapPin, Pin, Sparkles, AlertTriangle, Image as ImageIcon, Maximize2, ZoomIn, ZoomOut
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from './lib/imageUtils';
+import { motion, AnimatePresence } from 'motion/react';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
 import { GradingInbox } from './components/GradingInbox';
 import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse } from './types';
 import { ROOT_FOLDERS } from './constants';
 import { cn } from './lib/utils';
+import { AssessmentPlayer } from './components/AssessmentPlayer';
+import { AssessmentBuilder } from './components/AssessmentBuilder';
+import { AssessmentAnalytics } from './components/AssessmentAnalytics';
+import { v4 as uuidv4 } from 'uuid';
+import { Assessment } from './types';
 import { ContinueLearningCarousel } from './components/ContinueLearningCarousel';
 import { NavigationGrid } from './components/NavigationGrid';
 import { CourseThumbnail } from './components/CourseThumbnail';
@@ -583,6 +589,9 @@ export default function App() {
   const [catalogFormat, setCatalogFormat] = useState('All Formats');
   const [catalogDifficulty, setCatalogDifficulty] = useState('All Levels');
   const [selectedCatalogCourse, setSelectedCatalogCourse] = useState<any>(null);
+  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const [showAssessmentPlayer, setShowAssessmentPlayer] = useState(false);
+  const [currentAssessment, setCurrentAssessment] = useState<any>(null);
   const [showCourseWizard, setShowCourseWizard] = useState(false);
   const [courseWizardStep, setCourseWizardStep] = useState(1);
   const [newCourseData, setNewCourseData] = useState({
@@ -624,6 +633,80 @@ export default function App() {
   const [uploadUrl, setUploadUrl] = useState('');
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [assetSearchQuery, setAssetSearchQuery] = useState('');
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  
+  // New States for Builder in App.tsx
+  const [isAssessmentBuilderOpen, setIsAssessmentBuilderOpen] = useState(false);
+  const [selectedAssetForBuilder, setSelectedAssetForBuilder] = useState<FileItem | null>(null);
+
+  const handleSaveAssessment = async (assessment: Assessment) => {
+    // Save to local repository state
+    const existingAsset = repository.find(a => a.id === assessment.id);
+    
+    if (existingAsset) {
+      setRepository(prev => prev.map(a => a.id === assessment.id ? {
+        ...a,
+        title: assessment.title,
+        assessmentData: assessment,
+        version: `v${(parseInt(a.version?.replace('v', '') || '1') + 1)}`
+      } : a));
+    } else {
+      const newAsset: FileItem = {
+        id: assessment.id,
+        title: assessment.title,
+        type: "Assessment",
+        folderId: folders[0]?.id || "internal-root",
+        createdAt: new Date().toLocaleDateString(),
+        version: "v1",
+        status: "Active",
+        usedIn: 0,
+        views: 0,
+        completionRate: "0%",
+        author: "Me",
+        assessmentData: assessment
+      };
+      setRepository(prev => [newAsset, ...prev]);
+    }
+    
+    setIsAssessmentBuilderOpen(false);
+    setSelectedAssetForBuilder(null);
+    alert(`${assessment.subType} saved successfully!`);
+  };
+
+  const handleCreateNewAssessment = (type: 'Quiz' | 'Survey') => {
+    const newAssessment: Assessment = {
+      id: uuidv4(),
+      tenant_id: "default-tenant",
+      title: `New ${type}`,
+      subType: type,
+      description: "",
+      passing_score: type === 'Quiz' ? 80 : 0,
+      settings: {
+        timeLimit: 30,
+        shuffleQuestions: false,
+        shuffleAnswers: false,
+        maxAttempts: 1,
+        scoringType: "binary"
+      },
+      questions: []
+    };
+    
+    setSelectedAssetForBuilder({
+      id: newAssessment.id,
+      title: newAssessment.title,
+      type: 'Assessment',
+      folderId: 'internal-root',
+      createdAt: new Date().toLocaleDateString(),
+      version: 'v1',
+      status: 'Active',
+      usedIn: 0,
+      views: 0,
+      completionRate: '0%',
+      author: 'Me',
+      assessmentData: newAssessment
+    });
+    setIsAssessmentBuilderOpen(true);
+  };
 
   // SCORM Upload State
   const [showScormModal, setShowScormModal] = useState(false);
@@ -3519,6 +3602,12 @@ export default function App() {
                   <p className="text-guesty-forest/70 mt-2 text-lg">Build courses and manage your central asset repository.</p>
                 </div>
                 <div className="flex gap-3">
+                  <button onClick={() => handleCreateNewAssessment('Quiz')} className="bg-[#FF9D00]/10 border border-[#FF9D00]/20 text-[#FF9D00] font-bold px-5 py-3 rounded-[12px] shadow-sm hover:bg-[#FF9D00]/20 transition-colors flex items-center gap-2">
+                    <ListChecks className="w-5 h-5" /> New Quiz
+                  </button>
+                  <button onClick={() => handleCreateNewAssessment('Survey')} className="bg-guesty-ice/50 border border-guesty-nature/20 text-guesty-nature font-bold px-5 py-3 rounded-[12px] shadow-sm hover:bg-guesty-ice transition-colors flex items-center gap-2">
+                    <Plus className="w-5 h-5" /> New Survey
+                  </button>
                   <button onClick={() => setShowScormModal(true)} className="bg-white border border-guesty-beige text-guesty-black font-bold px-5 py-3 rounded-[12px] shadow-sm hover:bg-guesty-beige/50 transition-colors flex items-center gap-2">
                     <FileArchive className="w-5 h-5" /> Upload SCORM
                   </button>
@@ -3582,6 +3671,7 @@ export default function App() {
                           Access Control
                           {courseBuilderTab === 'access' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-guesty-nature rounded-t-full"></div>}
                         </button>
+
                       </div>
                     </div>
                     
@@ -3607,14 +3697,46 @@ export default function App() {
                                   </div>
                                 </div>
                               </div>
-                              <button 
-                                onClick={() => {
-                                  setCourses(courses.map(c => c.id === activeCourseId ? { ...c, modules: c.modules.filter(m => m.id !== mod.id) } : c));
-                                }}
-                                className="text-guesty-forest/40 hover:text-guesty-merlot transition-colors"
-                              >
-                                <X className="w-5 h-5" />
-                              </button>
+                                <div className="flex items-center gap-2">
+                                  {mod.type === 'Assessment' && (
+                                    <>
+                                      <button 
+                                        onClick={() => {
+                                          const asset = repository.find(r => r.id === mod.id);
+                                          if (asset && asset.assessmentData) {
+                                            setSelectedAssetForBuilder(asset);
+                                            setIsAssessmentBuilderOpen(true);
+                                          }
+                                        }}
+                                        className="p-2 text-guesty-forest/40 hover:text-guesty-nature hover:bg-guesty-ice/50 rounded-lg transition-colors"
+                                        title="Edit Survey/Quiz"
+                                      >
+                                        <Edit2 className="w-5 h-5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => {
+                                          const assessment = repository.find(r => r.id === mod.id);
+                                          if (assessment && assessment.assessmentData) {
+                                            setSelectedAsset({ ...assessment, assessmentData: assessment.assessmentData });
+                                            setIsAnalyticsModalOpen(true);
+                                          }
+                                        }}
+                                        className="p-2 text-guesty-nature hover:bg-guesty-ice/50 rounded-lg transition-colors"
+                                        title="View Analytics"
+                                      >
+                                        <BarChart3 className="w-5 h-5" />
+                                      </button>
+                                    </>
+                                  )}
+                                  <button 
+                                    onClick={() => {
+                                      setCourses(courses.map(c => c.id === activeCourseId ? { ...c, modules: c.modules.filter(m => m.id !== mod.id) } : c));
+                                    }}
+                                    className="text-guesty-forest/40 hover:text-guesty-merlot transition-colors p-2"
+                                  >
+                                    <X className="w-5 h-5" />
+                                  </button>
+                                </div>
                             </div>
                           ))}
                           
@@ -3628,6 +3750,8 @@ export default function App() {
                         </div>
                       </div>
                     )}
+
+
 
                     {courseBuilderTab === 'enrollment' && (
                       <div className="p-8 flex-1 bg-guesty-cream/10 space-y-8 overflow-y-auto">
@@ -4688,13 +4812,20 @@ export default function App() {
                     const isObject = typeof modId === 'object';
                     const title = isObject ? modId.title : `Module ${index + 1}`;
                     const type = isObject ? modId.type : 'Video';
-                    const isCompleted = index === 0 && (selectedCatalogCourse.progress || 0) > 0;
-                    const isActive = index === 1 || (index === 0 && !(selectedCatalogCourse.progress || 0));
+                    const isActive = index === activeModuleIndex;
+                    const isCompleted = index < activeModuleIndex;
                     
                     const moduleKey = isObject ? `m-${modId.id}-${index}` : `m-${modId}-${index}`;
 
                     return (
-                      <div key={moduleKey} className={`p-4 rounded-[16px] border ${isActive ? 'border-2 border-guesty-ocean bg-white shadow-sm relative overflow-hidden' : isCompleted ? 'border-guesty-nature/30 bg-guesty-ice/10 hover:bg-guesty-ice/30' : 'border-guesty-beige bg-white hover:border-guesty-forest/30'} flex gap-4 cursor-pointer transition-colors`}>
+                      <div 
+                        key={moduleKey} 
+                        onClick={() => {
+                          setActiveModuleIndex(index);
+                          setIsPlaying(false);
+                        }}
+                        className={`p-4 rounded-[16px] border ${isActive ? 'border-2 border-guesty-ocean bg-white shadow-sm relative overflow-hidden' : isCompleted ? 'border-guesty-nature/30 bg-guesty-ice/10 hover:bg-guesty-ice/30' : 'border-guesty-beige bg-white hover:border-guesty-forest/30'} flex gap-4 cursor-pointer transition-colors`}
+                      >
                         {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-guesty-ocean"></div>}
                         <div className={`mt-1 ${isActive ? 'text-guesty-ocean' : isCompleted ? 'text-guesty-nature' : 'text-guesty-forest/30'}`}>
                           {isCompleted ? <CheckCircle className="w-5 h-5" /> : isActive ? <PlayCircle className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
@@ -4722,18 +4853,36 @@ export default function App() {
               <div className="w-2/3 bg-guesty-night rounded-[24px] shadow-xl overflow-hidden flex flex-col relative">
                 {/* Simulated SCORM Content Area */}
                 <div className="flex-1 flex items-center justify-center bg-[#1a1a1a] relative">
-                  <div className="text-center space-y-6 animate-in zoom-in-95 duration-700">
-                    <div className="w-24 h-24 bg-guesty-ocean/20 rounded-full flex items-center justify-center mx-auto">
-                      <Package className="w-12 h-12 text-guesty-ocean" />
-                    </div>
-                    <div>
-                      <h3 className="text-3xl font-bold text-white mb-2">{selectedCatalogCourse.modules?.[0]?.title || 'Module'}</h3>
-                      <p className="text-guesty-powder/60">Interactive Module</p>
-                    </div>
-                    <button className="bg-guesty-ocean hover:bg-[#2b8a9e] text-white font-bold px-8 py-4 rounded-full shadow-lg transition-transform hover:scale-105 flex items-center gap-3 mx-auto" onClick={() => setIsPlaying(!isPlaying)}>
-                      {isPlaying ? <Pause className="w-6 h-6" /> : <PlayCircle className="w-6 h-6" />} {isPlaying ? 'Pause Module' : 'Start Module'}
-                    </button>
-                  </div>
+                  {(() => {
+                    const activeModule = selectedCatalogCourse.modules?.[activeModuleIndex];
+                    const activeAssessment = activeModule?.type === 'Assessment' ? repository.find(r => r.id === activeModule.id) : null;
+                    
+                    return (
+                      <div className="text-center space-y-6 animate-in zoom-in-95 duration-700">
+                        <div className="w-24 h-24 bg-guesty-ocean/20 rounded-full flex items-center justify-center mx-auto">
+                          {activeModule?.type === 'Video' ? <Video className="w-12 h-12 text-guesty-ocean" /> : <Package className="w-12 h-12 text-guesty-ocean" />}
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-bold text-white mb-2">{activeModule?.title || 'Module'}</h3>
+                          <p className="text-guesty-powder/60">{activeModule?.type} Interactive Module</p>
+                        </div>
+                        <button 
+                          className="bg-guesty-ocean hover:bg-[#2b8a9e] text-white font-bold px-8 py-4 rounded-full shadow-lg transition-transform hover:scale-105 flex items-center gap-3 mx-auto" 
+                          onClick={() => {
+                            if (activeAssessment?.assessmentData) {
+                              setCurrentAssessment(activeAssessment.assessmentData);
+                              setShowAssessmentPlayer(true);
+                            } else {
+                              setIsPlaying(!isPlaying);
+                            }
+                          }}
+                        >
+                          {activeAssessment ? <ExternalLink className="w-6 h-6" /> : isPlaying ? <Pause className="w-6 h-6" /> : <PlayCircle className="w-6 h-6" />} 
+                          {activeAssessment ? (activeAssessment.assessmentData?.subType === 'Survey' ? 'Start Survey' : 'Start Quiz') : (isPlaying ? 'Pause Module' : 'Start Module')}
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* SCORM Player Controls */}
@@ -8435,6 +8584,62 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Assessment Builder Modal (Admin/Instructor Creation) */}
+      <AnimatePresence>
+        {isAssessmentBuilderOpen && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-md overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-7xl h-full max-h-[90vh] flex flex-col bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white/20"
+            >
+              <AssessmentBuilder 
+                initialData={selectedAssetForBuilder?.assessmentData}
+                onSave={handleSaveAssessment}
+                onCancel={() => setIsAssessmentBuilderOpen(false)}
+                userRole="Admin"
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Assessment Analytics Modal - Reused in Course Builder tab */}
+      <AnimatePresence>
+        {isAnalyticsModalOpen && selectedAsset?.assessmentData && (
+          <AssessmentAnalytics 
+            assessment={selectedAsset.assessmentData}
+            attempts={attempts}
+            courses={courses}
+            groups={groups}
+            onClose={() => setIsAnalyticsModalOpen(false)}
+            onSaveAssessmentAttempt={handleSaveAssessmentAttempt}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Learner Assessment Player Pop-up */}
+      <AnimatePresence>
+        {showAssessmentPlayer && currentAssessment && (
+          <div className="fixed inset-0 z-[200]">
+             <AssessmentPlayer 
+               assessment={currentAssessment}
+               courseId={selectedCatalogCourse?.id}
+               userId="learner-1" // Mocked learner ID
+               userName="Learner User"
+               userGroupIds={['g1']}
+               onClose={() => setShowAssessmentPlayer(false)}
+               onAttemptComplete={(attempt) => {
+                 handleSaveAssessmentAttempt(attempt);
+                 setShowAssessmentPlayer(false);
+                 // Optional: mark module as completed in course
+               }}
+             />
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

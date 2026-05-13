@@ -73,12 +73,12 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
   const selectedAttempt = attempts.find(a => a.id === selectedAttemptId);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 bg-black/60 backdrop-blur-md overflow-hidden">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-[40px] shadow-2xl w-full max-w-6xl h-[85vh] overflow-hidden border border-gray-100 flex flex-col"
+        initial={{ opacity: 0, scale: 1.05 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 1.05 }}
+        className="bg-white shadow-2xl w-full h-full overflow-hidden flex flex-col"
       >
         <AnimatePresence>
           {selectedAttempt && (
@@ -104,7 +104,9 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
               <BarChart3 className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Quiz Analytics</h2>
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                {assessment.subType === 'Survey' ? "Survey Responses" : "Quiz Analytics"}
+              </h2>
               <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">{assessment.title}</p>
             </div>
           </div>
@@ -202,9 +204,70 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
           </div>
         </div>
 
-        {/* Table Area */}
+        {/* Table Area or Survey Summary */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          {filteredAttempts.length === 0 ? (
+          {assessment.subType === 'Survey' ? (
+            <div className="max-w-4xl mx-auto space-y-12 py-8">
+              {assessment.questions.map((question, qIdx) => {
+                const questionResponses = filteredAttempts.map(att => att.responses[question.id]);
+                
+                return (
+                  <div key={question.id} className="space-y-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-xs font-black text-gray-400 shrink-0">
+                        {qIdx + 1}
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-xl font-bold text-gray-900 leading-tight">{question.content}</h3>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{question.type.replace('_', ' ')}</p>
+                      </div>
+                    </div>
+
+                    <div className="ml-12">
+                      {question.type === 'open_ended' ? (
+                        <div className="space-y-3">
+                          {questionResponses.filter(r => !!r).map((r, i) => (
+                            <div key={i} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm text-gray-600 italic">
+                              "{typeof r === 'string' ? r : (r as any)?.text}"
+                            </div>
+                          ))}
+                          {questionResponses.filter(r => !!r).length === 0 && (
+                            <p className="text-sm text-gray-400 italic">No responses yet.</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                          {question.answers.map(answer => {
+                            const selectedCount = questionResponses.filter(r => {
+                              if (Array.isArray(r)) return r.includes(answer.id);
+                              return r === answer.id;
+                            }).length;
+                            const percentage = questionResponses.length > 0 ? (selectedCount / questionResponses.length) * 100 : 0;
+                            
+                            return (
+                              <div key={answer.id} className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-bold text-gray-700">{answer.content}</span>
+                                  <span className="text-xs font-black text-gray-400 uppercase">{selectedCount} votes ({Math.round(percentage)}%)</span>
+                                </div>
+                                <div className="h-3 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${percentage}%` }}
+                                    className="h-full bg-guesty-ocean"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : filteredAttempts.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
               <FileText className="w-16 h-16 mb-4" />
               <p className="font-black uppercase tracking-widest text-xs">No matching results found</p>

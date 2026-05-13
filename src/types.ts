@@ -39,6 +39,7 @@ export interface FileItem {
   usedIn?: number;
   views?: number;
   completionRate?: string;
+  author?: string;
   history?: HistoryEntry[];
   url?: string;
   tags?: string[];
@@ -82,6 +83,7 @@ export interface AssessmentSettings {
   shuffleAnswers: boolean;
   maxAttempts: number;
   scoringType: "binary" | "partial";
+  isAnonymous?: boolean;
 }
 
 export interface Group {

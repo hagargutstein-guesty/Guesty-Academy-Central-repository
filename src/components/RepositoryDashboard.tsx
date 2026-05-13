@@ -1471,12 +1471,12 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
       {/* Assessment Builder Modal */}
       <AnimatePresence>
         {isAssessmentBuilderOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/60 backdrop-blur-md">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-md overflow-hidden">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="w-full max-w-7xl h-full flex flex-col"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-7xl h-full max-h-[90vh] flex flex-col bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white/20"
             >
               <AssessmentBuilder 
                 initialData={selectedAsset?.assessmentData}

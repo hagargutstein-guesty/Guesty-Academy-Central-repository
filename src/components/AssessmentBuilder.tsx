@@ -216,7 +216,7 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
 
   return (
     <div className={cn(
-      "flex h-[calc(100vh-12rem)] bg-white overflow-hidden rounded-3xl border border-gray-100 shadow-xl",
+      "flex h-full bg-white overflow-hidden rounded-3xl border border-gray-100 shadow-xl",
       isSurvey && "ring-2 ring-[#FF9D00]/20"
     )}>
       {/* --- Survey Informational Overlay --- */}
@@ -827,6 +827,20 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                   <Shuffle className="w-3.5 h-3.5" />
                   A's
                 </button>
+                {isSurvey && (
+                  <button 
+                    onClick={() => updateSettings({ isAnonymous: !assessment.settings.isAnonymous })}
+                    title="Toggle Anonymity"
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-[10px] font-black uppercase tracking-widest",
+                      assessment.settings.isAnonymous 
+                        ? "bg-guesty-nature text-white shadow-md shadow-guesty-nature/20" 
+                        : "bg-gray-50 border-gray-100 text-gray-400"
+                    )}
+                  >
+                    {assessment.settings.isAnonymous ? "Anonymized" : "Named"}
+                  </button>
+                )}
               </div>
               {/* Answer Key URL */}
               <div className="md:col-span-2">
