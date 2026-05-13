@@ -37,7 +37,8 @@ interface GradingInboxProps {
   onReleaseGrades: (assessmentId: string) => void;
 }
 
-type DrillDownLevel = 'overview' | 'questions' | 'learners';
+type DrillDownLevel = 'overview' | 'questions' | 'learners-list' | 'workspace';
+type WorkflowType = 'question-first' | 'learner-first';
 
 export const GradingInbox: React.FC<GradingInboxProps> = ({ 
   assessments, 
@@ -46,9 +47,13 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
   onReleaseGrades
 }) => {
   const [level, setLevel] = useState<DrillDownLevel>('overview');
+  const [workflow, setWorkflow] = useState<WorkflowType>('question-first');
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [selectedLearnerId, setSelectedLearnerId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Ungraded' | 'Draft' | 'Requires Second Opinion'>('All');
+  
   const [isSaving, setIsSaving] = useState(false);
   const [showAutoSave, setShowAutoSave] = useState(false);
 
@@ -81,6 +86,34 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
     return selectedAssessment.questions.filter(q => q.type === 'open_ended');
   }, [selectedAssessment]);
 
+  const learnersForAssessment = useMemo(() => {
+    if (!selectedAssessmentId) return [];
+    return attempts.filter(att => 
+      att.assessment_id === selectedAssessmentId && 
+      att.status !== 'In Progress'
+    ).map(att => {
+      const allOpenEnded = selectedAssessment?.questions.filter(q => q.type === 'open_ended') || [];
+      const gradedCount = allOpenEnded.filter(q => !!att.manual_grades?.[q.id]).length;
+      const isGraded = gradedCount === allOpenEnded.length;
+      return {
+        ...att,
+        gradedCount,
+        totalToGrade: allOpenEnded.length,
+        isGraded
+      };
+    });
+  }, [selectedAssessmentId, selectedAssessment, attempts]);
+
+  const filteredLearners = useMemo(() => {
+    return learnersForAssessment.filter(l => {
+      const matchesSearch = l.user_name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'All' || 
+        (statusFilter === 'Ungraded' && !l.isGraded) ||
+        (statusFilter === 'Draft' && l.status === 'Submitted' && l.manual_grades && Object.keys(l.manual_grades).length > 0);
+      return matchesSearch && matchesStatus;
+    });
+  }, [learnersForAssessment, searchQuery, statusFilter]);
+
   const learnersForQuestion = useMemo(() => {
     if (!selectedAssessmentId || !selectedQuestionId) return [];
     return attempts.filter(att => 
@@ -94,8 +127,30 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
         response,
         isGraded
       };
+    }).filter(l => {
+        const matchesSearch = l.user_name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'All' || 
+            (statusFilter === 'Ungraded' && !l.isGraded);
+        return matchesSearch && matchesStatus;
     });
-  }, [selectedAssessmentId, selectedQuestionId, attempts]);
+  }, [selectedAssessmentId, selectedQuestionId, attempts, searchQuery, statusFilter]);
+
+  const questionsForLearner = useMemo(() => {
+    if (!selectedAssessment || !selectedLearnerId) return [];
+    return selectedAssessment.questions.filter(q => q.type === 'open_ended').map(q => {
+        const attempt = attempts.find(att => att.user_id === selectedLearnerId && att.assessment_id === selectedAssessmentId);
+        const isGraded = !!attempt?.manual_grades?.[q.id];
+        return {
+            ...q,
+            isGraded
+        };
+    }).filter(q => {
+        const matchesSearch = q.content.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'All' || 
+            (statusFilter === 'Ungraded' && !q.isGraded);
+        return matchesSearch && matchesStatus;
+    });
+  }, [selectedAssessment, selectedLearnerId, selectedAssessmentId, attempts, searchQuery, statusFilter]);
 
   const currentAttempt = useMemo(() => 
     attempts.find(att => att.user_id === selectedLearnerId && att.assessment_id === selectedAssessmentId),
@@ -108,15 +163,26 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
   // --- Handlers ---
   const handleSelectAssessment = (id: string) => {
     setSelectedAssessmentId(id);
-    setLevel('questions');
+    setLevel(workflow === 'question-first' ? 'questions' : 'learners-list');
   };
 
   const handleSelectQuestion = (id: string) => {
     setSelectedQuestionId(id);
-    setLevel('learners');
-    // Select first learner by default
-    const firstLearner = learnersForQuestion.find(l => !l.isGraded) || learnersForQuestion[0];
-    if (firstLearner) setSelectedLearnerId(firstLearner.user_id);
+    setLevel('workspace');
+    if (workflow === 'question-first') {
+        // Select first learner who needs grading or just first one
+        const firstLearner = learnersForQuestion.find(l => !l.isGraded) || learnersForQuestion[0];
+        if (firstLearner) setSelectedLearnerId(firstLearner.user_id);
+    }
+  };
+
+  const handleSelectLearner = (id: string) => {
+    setSelectedLearnerId(id);
+    setLevel('workspace');
+    if (workflow === 'learner-first') {
+        const firstQuestion = questionsForLearner.find(q => !q.isGraded) || questionsForLearner[0];
+        if (firstQuestion) setSelectedQuestionId(firstQuestion.id);
+    }
   };
 
   const handleSaveGrade = async (learnerId: string, grade: QuestionGrade) => {
@@ -145,12 +211,165 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
     setTimeout(() => setShowAutoSave(false), 2000);
   };
 
-  const handleNextLearner = () => {
-    const currentIndex = learnersForQuestion.findIndex(l => l.user_id === selectedLearnerId);
-    if (currentIndex < learnersForQuestion.length - 1) {
-      setSelectedLearnerId(learnersForQuestion[currentIndex + 1].user_id);
+  const handleNextInFlow = () => {
+    if (workflow === 'question-first') {
+      const currentIndex = learnersForQuestion.findIndex(l => l.user_id === selectedLearnerId);
+      if (currentIndex < learnersForQuestion.length - 1) {
+        setSelectedLearnerId(learnersForQuestion[currentIndex + 1].user_id);
+      }
+    } else {
+      const currentIndex = questionsForLearner.findIndex(q => q.id === selectedQuestionId);
+      if (currentIndex < questionsForLearner.length - 1) {
+        setSelectedQuestionId(questionsForLearner[currentIndex + 1].id);
+      }
     }
   };
+
+  const GlobalFilterBar = () => (
+    <div className="flex flex-wrap items-center gap-6 p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm mb-8">
+      {/* Workflow Toggle */}
+      <div className="flex items-center gap-3 pr-6 border-r border-gray-100">
+        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Path</span>
+        <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+           <button 
+             onClick={() => {
+                setWorkflow('question-first');
+                if (level !== 'overview') setLevel('questions');
+             }}
+             className={cn(
+               "px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all",
+               workflow === 'question-first' ? "bg-white text-guesty-nature shadow-lg shadow-guesty-nature/10" : "text-gray-400 hover:text-gray-600"
+             )}
+             title="Assessment -> Question -> Learners"
+           >
+             Question-First
+           </button>
+           <button 
+             onClick={() => {
+                setWorkflow('learner-first');
+                if (level !== 'overview') setLevel('learners-list');
+             }}
+             className={cn(
+               "px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all",
+               workflow === 'learner-first' ? "bg-white text-guesty-nature shadow-lg shadow-guesty-nature/10" : "text-gray-400 hover:text-gray-600"
+             )}
+             title="Assessment -> Learner -> Questions"
+           >
+             Learner-First
+           </button>
+        </div>
+      </div>
+
+      {/* Assessment Selector */}
+      <div className="flex flex-col gap-1.5 md:min-w-[180px]">
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assessment</label>
+        <select 
+          value={selectedAssessmentId || ''}
+          onChange={(e) => {
+            const id = e.target.value;
+            if (id) handleSelectAssessment(id);
+            else {
+              setSelectedAssessmentId(null);
+              setLevel('overview');
+            }
+          }}
+          className="bg-gray-50 border border-gray-100 text-xs font-bold text-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-guesty-nature/10"
+        >
+          <option value="">All Assessments</option>
+          {activeAssessments.map(a => (
+            <option key={a.id} value={a.id}>{a.title}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Learner Selector */}
+      {selectedAssessmentId && (
+        <div className="flex flex-col gap-1.5 md:min-w-[180px]">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Learner</label>
+          <select 
+            value={selectedLearnerId || ''}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) handleSelectLearner(id);
+            }}
+            className="bg-gray-50 border border-gray-100 text-xs font-bold text-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-guesty-nature/10"
+          >
+            <option value="">Select Learner...</option>
+            {learnersForAssessment.map(l => (
+              <option key={l.user_id} value={l.user_id}>{l.user_name} ({l.gradedCount}/{l.totalToGrade})</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Question Selector */}
+      {selectedAssessmentId && (
+        <div className="flex flex-col gap-1.5 md:min-w-[180px]">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Question</label>
+          <select 
+            value={selectedQuestionId || ''}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) handleSelectQuestion(id);
+            }}
+            className="bg-gray-50 border border-gray-100 text-xs font-bold text-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-guesty-nature/10"
+          >
+            <option value="">Select Question...</option>
+            {questionsNeedingGrading.map((q, idx) => (
+              <option key={q.id} value={q.id}>Q{idx + 1}: {q.content.substring(0, 30)}...</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Status & Search */}
+      <div className="ml-auto flex items-center gap-6">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</label>
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="bg-gray-50 border border-gray-100 text-xs font-bold text-gray-600 rounded-xl px-4 py-2 focus:outline-none"
+          >
+            <option>All</option>
+            <option>Ungraded</option>
+            <option>Draft</option>
+            <option>Requires Second Opinion</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5 min-w-[200px]">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Search</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input 
+              type="text"
+              placeholder="Filter list..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-guesty-nature/20"
+            />
+          </div>
+        </div>
+
+        {selectedAssessmentId && (
+            <button 
+              onClick={() => {
+                  setSelectedAssessmentId(null);
+                  setSelectedQuestionId(null);
+                  setSelectedLearnerId(null);
+                  setLevel('overview');
+                  setSearchQuery('');
+              }}
+              className="p-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all self-end"
+              title="Clear all filters"
+            >
+              <X className="w-5 h-5" />
+            </button>
+        )}
+      </div>
+    </div>
+  );
 
   // --- Sub-Components ---
 
@@ -333,6 +552,56 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
     </div>
   );
 
+  const LearnerSelectionView = () => (
+    <div className="space-y-8">
+      <div className="flex items-center gap-4 mb-2">
+        <button 
+          onClick={() => setLevel('overview')}
+          className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-900"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight">{selectedAssessment?.title}</h2>
+          <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Select learner to review</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredLearners.map(learner => (
+          <motion.button 
+            key={learner.user_id}
+            onClick={() => handleSelectLearner(learner.user_id)}
+            className="group p-6 bg-white border border-gray-100 rounded-[32px] hover:border-guesty-nature/30 hover:shadow-2xl hover:shadow-guesty-nature/5 transition-all text-left space-y-4"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-guesty-ice group-hover:text-guesty-nature transition-colors">
+                <User className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">{learner.user_name}</h3>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{learner.status}</p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Questions Graded</p>
+                <p className="text-sm font-black text-guesty-nature">{learner.gradedCount} / {learner.totalToGrade}</p>
+              </div>
+              <div className="h-2 w-24 bg-gray-50 rounded-full overflow-hidden">
+                <div 
+                   className="h-full bg-guesty-nature" 
+                   style={{ width: `${(learner.gradedCount / learner.totalToGrade) * 100}%` }}
+                />
+              </div>
+            </div>
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  );
+
   const GradingWorkspace = () => {
     const response = currentAttempt?.responses?.[selectedQuestionId!] as { text: string; files: string[] } | string;
     const responseText = typeof response === 'string' ? response : response?.text;
@@ -343,7 +612,6 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
     const [feedbackImages, setFeedbackImages] = useState<string[]>(currentAttempt?.manual_grades?.[selectedQuestionId!]?.feedback_images || []);
 
     const onDrop = (acceptedFiles: File[]) => {
-      // Mock upload
       const newImages = acceptedFiles.map(file => URL.createObjectURL(file));
       setFeedbackImages(prev => [...prev, ...newImages]);
     };
@@ -355,25 +623,33 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
 
     const isGraded = learnersForQuestion.find(l => l.user_id === selectedLearnerId)?.isGraded;
 
+    const navItems = workflow === 'question-first' ? learnersForQuestion : questionsForLearner;
+    const currentId = workflow === 'question-first' ? selectedLearnerId : selectedQuestionId;
+    const currentIndex = navItems.findIndex(item => (workflow === 'question-first' ? (item as any).user_id : item.id) === currentId);
+
     return (
       <div className="h-full flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => setLevel('questions')}
+              onClick={() => setLevel(workflow === 'question-first' ? 'questions' : 'learners-list')}
               className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-gray-900"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
-                <User className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-gray-900">{currentAttempt?.user_name}</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Submitted {currentAttempt ? new Date(currentAttempt.completed_at).toLocaleDateString() : ''}
-                </p>
+              <div className="px-3 py-1.5 bg-gray-100 rounded-lg flex items-center gap-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate max-w-[150px]">
+                   {selectedAssessment?.title}
+                </span>
+                <ChevronRight className="w-3 h-3 text-gray-300" />
+                <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">
+                   {currentAttempt?.user_name}
+                </span>
+                <ChevronRight className="w-3 h-3 text-gray-300" />
+                <span className="text-[10px] font-black text-guesty-nature uppercase tracking-widest">
+                   Question {(selectedAssessment?.questions.findIndex(q => q.id === selectedQuestionId) || 0) + 1}
+                </span>
               </div>
             </div>
           </div>
@@ -387,26 +663,29 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
                 className="flex items-center gap-2 text-[10px] font-black text-guesty-nature uppercase"
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-guesty-nature animate-pulse" />
-                All changes saved
+                Auto-saved
               </motion.div>
             )}
             <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-100">
               <button 
-                disabled={learnersForQuestion.findIndex(l => l.user_id === selectedLearnerId) === 0}
+                disabled={currentIndex === 0}
                 onClick={() => {
-                  const idx = learnersForQuestion.findIndex(l => l.user_id === selectedLearnerId);
-                  setSelectedLearnerId(learnersForQuestion[idx - 1].user_id);
+                    if (workflow === 'question-first') {
+                        setSelectedLearnerId((navItems[currentIndex - 1] as any).user_id);
+                    } else {
+                        setSelectedQuestionId(navItems[currentIndex - 1].id);
+                    }
                 }}
                 className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all disabled:opacity-30"
               >
                 <ChevronRight className="w-5 h-5 rotate-180" />
               </button>
               <div className="px-4 flex items-center text-xs font-black text-gray-500">
-                {learnersForQuestion.findIndex(l => l.user_id === selectedLearnerId) + 1} / {learnersForQuestion.length}
+                {currentIndex + 1} / {navItems.length}
               </div>
               <button 
-                onClick={handleNextLearner}
-                disabled={learnersForQuestion.findIndex(l => l.user_id === selectedLearnerId) === learnersForQuestion.length - 1}
+                onClick={handleNextInFlow}
+                disabled={currentIndex === navItems.length - 1}
                 className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all disabled:opacity-30"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -419,7 +698,12 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
           {/* Left: Learner Response */}
           <div className="flex flex-col gap-6 min-h-0 overflow-y-auto pr-4 custom-scrollbar">
             <section className="space-y-4">
-              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Question Prompt</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Question Prompt</h4>
+                <div className="px-2 py-0.5 bg-gray-100 rounded text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                  {activeQuestion?.type.replace('_', ' ')}
+                </div>
+              </div>
               <div className="p-8 bg-gray-50 rounded-[32px] border border-gray-100 italic text-gray-600 leading-relaxed font-medium">
                 "{activeQuestion?.content}"
               </div>
@@ -532,27 +816,28 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => handleSaveGrade(selectedLearnerId!, {
+            <button 
+              onClick={() => {
+                handleSaveGrade(selectedLearnerId!, {
                   score,
                   max_score: activeQuestion?.points || 100,
                   feedback,
                   feedback_images: feedbackImages
-                })}
-                disabled={isSaving}
-                className="flex-1 flex items-center justify-center gap-3 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-black/10 disabled:opacity-50"
-              >
-                {isSaving ? (
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <Save className="w-5 h-5 text-guesty-nature" />
-                    Save & Next Learner
-                  </>
-                )}
-              </button>
-            </div>
+                });
+                handleNextInFlow();
+              }}
+              disabled={isSaving}
+              className="mt-auto flex items-center justify-center gap-3 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-black/10 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-5 h-5 text-guesty-nature" />
+                  Save & Next {workflow === 'question-first' ? "Learner" : "Question"}
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -561,6 +846,7 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
 
   return (
     <div className="h-full flex flex-col p-8 bg-guesty-cream/30 overflow-hidden">
+      <GlobalFilterBar />
       <div className="flex-1 min-h-0">
         <AnimatePresence mode="wait">
           {level === 'overview' && (
@@ -587,9 +873,21 @@ export const GradingInbox: React.FC<GradingInboxProps> = ({
             </motion.div>
           )}
 
-          {level === 'learners' && (
+          {level === 'learners-list' && (
             <motion.div
-              key="learners"
+              key="learners-list"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="h-full"
+            >
+              <LearnerSelectionView />
+            </motion.div>
+          )}
+
+          {level === 'workspace' && (
+            <motion.div
+              key="workspace"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
