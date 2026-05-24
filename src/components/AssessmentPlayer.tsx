@@ -51,6 +51,7 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
   const [gradingResult, setGradingResult] = useState<GradingResult | null>(null);
   const [timeLeft, setTimeLeft] = useState(assessment.settings.timeLimit * 60);
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [lockedQuestions, setLockedQuestions] = useState<Record<string, boolean>>({});
 
   const isSurvey = assessment.subType === "Survey";
 
@@ -61,6 +62,54 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
   }, [assessment]);
 
   const currentQuestion = shuffledQuestions[currentQuestionIndex];
+
+  const isQuestionLocked = currentQuestion ? lockedQuestions[currentQuestion.id] === true : false;
+  const hasSelectedValue = currentQuestion
+    ? (currentQuestion.type === "multiple_choice"
+      ? (Array.isArray(responses[currentQuestion.id]) && (responses[currentQuestion.id] as string[]).length > 0)
+      : !!responses[currentQuestion.id])
+    : false;
+  const isNavigable = currentQuestion
+    ? (currentQuestion.type === "open_ended" || isQuestionLocked)
+    : true;
+
+  const getQuestionFeedback = (q: Question) => {
+    if (!q || q.type === "open_ended") return null;
+
+    const userResponse = responses[q.id];
+    let isCorrect = false;
+    let selectedAnswersFeedback: string[] = [];
+
+    if (q.type === "single_choice" || q.type === "likert_scale") {
+      const selectedId = userResponse as string;
+      const answer = q.answers.find(a => a.id === selectedId);
+      isCorrect = answer?.is_correct === true;
+      if (answer?.feedback) {
+        selectedAnswersFeedback.push(answer.feedback);
+      }
+    } else if (q.type === "multiple_choice") {
+      const selectedIds = (userResponse as string[]) || [];
+      const correctIds = q.answers.filter(a => a.is_correct).map(a => a.id);
+      isCorrect = selectedIds.length === correctIds.length && selectedIds.every(id => correctIds.includes(id));
+      
+      selectedIds.forEach(id => {
+        const answer = q.answers.find(a => a.id === id);
+        if (answer?.feedback) {
+          selectedAnswersFeedback.push(`${answer.content}: ${answer.feedback}`);
+        }
+      });
+    }
+
+    const mainFeedback = isCorrect 
+      ? (q.correct_feedback || "Well done! Correct.") 
+      : (q.incorrect_feedback || "Incorrect. Review the material.");
+
+    return {
+      isCorrect,
+      mainFeedback,
+      optionFeedback: selectedAnswersFeedback
+    };
+  };
 
   if (!currentQuestion && !isFinished) {
     return (
@@ -109,7 +158,7 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
   };
 
   const handleSelect = (qId: string, aId: string) => {
-    if (isFinished) return;
+    if (isFinished || lockedQuestions[qId]) return;
 
     if (currentQuestion.type === "single_choice") {
       setResponses(prev => ({ ...prev, [qId]: aId }));
@@ -123,7 +172,7 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
   };
 
   const handleTextChange = (qId: string, text: string) => {
-    if (isFinished) return;
+    if (isFinished || lockedQuestions[qId]) return;
     setResponses(prev => ({ ...prev, [qId]: text }));
   };
 
@@ -430,15 +479,25 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                     {currentQuestion.answers.map((answer, idx) => {
                       const isSelected = responses[currentQuestion.id] === answer.id;
+                      let btnStyle = "bg-white border-gray-100 hover:border-gray-200";
+                      if (isQuestionLocked) {
+                        if (isSelected) {
+                          btnStyle = "bg-[#FF9D00]/15 border-[#FF9D00] shadow-sm";
+                        } else {
+                          btnStyle = "bg-white border-gray-50 opacity-40";
+                        }
+                      } else if (isSelected) {
+                        btnStyle = "bg-[#FF9D00]/10 border-[#FF9D00] shadow-lg shadow-[#FF9D00]/10 scale-[1.02]";
+                      }
+
                       return (
                         <button
                           key={answer.id}
                           onClick={() => handleSelect(currentQuestion.id, answer.id)}
+                          disabled={isQuestionLocked}
                           className={cn(
                             "flex flex-col items-center justify-center p-6 rounded-3xl border-2 transition-all gap-4 text-center group",
-                            isSelected 
-                              ? "bg-[#FF9D00]/10 border-[#FF9D00] shadow-lg shadow-[#FF9D00]/10 scale-[1.02]" 
-                              : "bg-white border-gray-100 hover:border-gray-200"
+                            btnStyle
                           )}
                         >
                           <div className={cn(
@@ -465,29 +524,47 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
                       ? (responses[currentQuestion.id] as string[]).includes(answer.id)
                       : responses[currentQuestion.id] === answer.id;
 
+                    let optionStyle = "bg-white border-gray-100 hover:border-gray-200";
+                    if (isQuestionLocked) {
+                      if (answer.is_correct) {
+                        optionStyle = "bg-green-50/50 border-green-500 scale-[1.01] shadow-sm";
+                      } else if (isSelected) {
+                        optionStyle = "bg-red-50/50 border-red-350";
+                      } else {
+                        optionStyle = "bg-white border-gray-50 opacity-40";
+                      }
+                    } else if (isSelected) {
+                      optionStyle = isSurvey ? "bg-[#FF9D00]/5 border-[#FF9D00] shadow-lg shadow-[#FF9D00]/5" : "bg-guesty-ice/30 border-guesty-nature shadow-lg shadow-guesty-nature/10 scale-[1.02]";
+                    }
+
                     return (
                       <button
                         key={answer.id}
                         onClick={() => handleSelect(currentQuestion.id, answer.id)}
+                        disabled={isQuestionLocked}
                         className={cn(
                           "w-full text-left p-6 rounded-3xl border-2 transition-all flex items-center gap-4 group",
-                          isSelected 
-                            ? (isSurvey ? "bg-[#FF9D00]/5 border-[#FF9D00] shadow-lg shadow-[#FF9D00]/5" : "bg-guesty-ice/30 border-guesty-nature shadow-lg shadow-guesty-nature/10 scale-[1.02]")
-                            : "bg-white border-gray-100 hover:border-gray-200"
+                          optionStyle
                         )}
                       >
                         <div className={cn(
                           "w-8 h-8 rounded-xl flex items-center justify-center border-2 shrink-0 transition-all",
-                          isSelected 
-                            ? (isSurvey ? "bg-[#FF9D00] border-[#FF9D00] text-white" : "bg-guesty-nature border-guesty-nature text-white")
-                            : "bg-white border-gray-200 text-transparent group-hover:border-guesty-nature/30"
+                          isQuestionLocked 
+                            ? (answer.is_correct ? "bg-green-500 border-green-500 text-white" : isSelected ? "bg-red-500 border-red-500 text-white" : "bg-gray-100 border-gray-200 text-transparent")
+                            : (isSelected ? (isSurvey ? "bg-[#FF9D00] border-[#FF9D00] text-white" : "bg-guesty-nature border-guesty-nature text-white") : "bg-white border-gray-200 text-transparent group-hover:border-guesty-nature/30")
                         )}>
-                          <CheckCircle2 className="w-5 h-5" />
+                          {isQuestionLocked && isSelected && !answer.is_correct ? (
+                            <XSquare className="w-5 h-5 shrink-0" />
+                          ) : (
+                            <CheckCircle2 className="w-5 h-5 shrink-0" />
+                          )}
                         </div>
                         <div className="flex-1">
                           <p className={cn(
                             "text-lg font-bold transition-colors",
-                            isSelected ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900"
+                            isQuestionLocked
+                              ? (answer.is_correct ? "text-green-950" : isSelected ? "text-red-950" : "text-gray-400")
+                              : (isSelected ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900")
                           )}>
                             {answer.content}
                           </p>
@@ -502,6 +579,74 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
                   })
                 )}
               </div>
+
+              {/* Lock in Answer Action and Feedback Box */}
+              {currentQuestion.type !== "open_ended" && (
+                <div className="pt-6 border-t border-gray-100 flex flex-col gap-4">
+                  {!isQuestionLocked ? (
+                    <button
+                      onClick={() => setLockedQuestions(prev => ({ ...prev, [currentQuestion.id]: true }))}
+                      disabled={!hasSelectedValue}
+                      className={cn(
+                        "w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2",
+                        hasSelectedValue 
+                          ? "bg-guesty-nature text-white hover:bg-opacity-90 cursor-pointer shadow-guesty-nature/10"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-100"
+                      )}
+                    >
+                      Lock in Answer to View Feedback
+                    </button>
+                  ) : (() => {
+                    const fb = getQuestionFeedback(currentQuestion);
+                    if (!fb) return null;
+                    return (
+                      <div className={cn(
+                        "p-6 rounded-[24px] border transition-all animate-in fade-in slide-in-from-bottom-2 duration-300",
+                        currentQuestion.type === "likert_scale"
+                          ? "bg-guesty-ice/30 border-guesty-nature/20 text-guesty-black"
+                          : fb.isCorrect 
+                            ? "bg-green-50 border-green-200 text-green-900" 
+                            : "bg-red-50 border-red-200 text-red-900"
+                      )}>
+                        <div className="flex items-start gap-4">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                            currentQuestion.type === "likert_scale"
+                              ? "bg-guesty-nature/10 text-guesty-nature"
+                              : fb.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                          )}>
+                            {currentQuestion.type === "likert_scale" ? (
+                              <CheckCircle2 className="w-5 h-5" />
+                            ) : fb.isCorrect ? (
+                              <CheckCircle2 className="w-5 h-5" />
+                            ) : (
+                              <XSquare className="w-5 h-5" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-black text-sm uppercase tracking-wider">
+                              {currentQuestion.type === "likert_scale" ? "Response Saved" : (fb.isCorrect ? "Correct!" : "Incorrect")}
+                            </p>
+                            <p className="text-sm font-medium text-gray-700 mt-1.5 leading-relaxed">
+                              {fb.mainFeedback}
+                            </p>
+                            {fb.optionFeedback.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-gray-150 space-y-2">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Detail Feedbacks</p>
+                                {fb.optionFeedback.map((ofb, idx) => (
+                                  <p key={idx} className="text-xs font-semibold text-gray-600">
+                                    • {ofb}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -519,29 +664,44 @@ export const AssessmentPlayer: React.FC<AssessmentPlayerProps> = ({
         </button>
 
         <div className="flex items-center gap-4">
-          {currentQuestionIndex < shuffledQuestions.length - 1 ? (
-            <button 
-              onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-              className={cn(
-                "flex items-center gap-2 px-10 py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl",
-                isSurvey ? "bg-[#FF9D00] shadow-[#FF9D00]/10 hover:opacity-90" : "bg-gray-900 hover:bg-black shadow-black/10"
-              )}
-            >
-              Next Question
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          ) : (
-            <button 
-              onClick={handleSubmit}
-              className={cn(
-                "flex items-center gap-3 px-12 py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl",
-                isSurvey ? "bg-[#FF9D00] shadow-[#FF9D00]/20 hover:opacity-90" : "bg-guesty-nature hover:bg-black shadow-guesty-nature/20"
-              )}
-            >
-              <Send className="w-5 h-5" />
-              {isSurvey ? "Submit Feedback" : "Finish Assessment"}
-            </button>
-          )}
+          {(() => {
+            const isQuestionLocked = lockedQuestions[currentQuestion.id] === true;
+            const isNavigable = currentQuestion.type === "open_ended" || isQuestionLocked;
+
+            if (currentQuestionIndex < shuffledQuestions.length - 1) {
+              return (
+                <button 
+                  onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+                  disabled={!isNavigable}
+                  className={cn(
+                    "flex items-center gap-2 px-10 py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl",
+                    !isNavigable 
+                      ? "bg-gray-100 text-gray-400 border border-gray-100 cursor-not-allowed shadow-none"
+                      : isSurvey ? "bg-[#FF9D00] shadow-[#FF9D00]/10 hover:opacity-90" : "bg-gray-900 hover:bg-black shadow-black/10"
+                  )}
+                >
+                  Next Question
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              );
+            } else {
+              return (
+                <button 
+                  onClick={handleSubmit}
+                  disabled={!isNavigable}
+                  className={cn(
+                    "flex items-center gap-3 px-12 py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl",
+                    !isNavigable
+                      ? "bg-gray-100 text-gray-400 border border-gray-100 cursor-not-allowed shadow-none"
+                      : isSurvey ? "bg-[#FF9D00] shadow-[#FF9D00]/20 hover:opacity-90" : "bg-guesty-nature hover:bg-black shadow-guesty-nature/20"
+                  )}
+                >
+                  <Send className="w-5 h-5" />
+                  {isSurvey ? "Submit Feedback" : "Finish Assessment"}
+                </button>
+              );
+            }
+          })()}
         </div>
       </div>
     </div>

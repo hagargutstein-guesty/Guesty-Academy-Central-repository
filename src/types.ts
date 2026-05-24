@@ -180,6 +180,26 @@ export interface LearningPlanCourse {
   status: 'Completed' | 'In-Progress' | 'Locked';
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  jobTitle?: string;
+  domain?: string;
+  site?: string;
+  department?: string;
+  isManager?: boolean;
+  startDate?: string;
+  employmentType?: string;
+  createdAt?: string;
+  groups?: string[];
+  status?: string;
+  lastLogin?: string;
+  powerProfileIds?: string[];
+  managerId?: string;
+}
+
 export interface LearningPlan {
   id: string;
   title: string;

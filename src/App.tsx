@@ -14,12 +14,13 @@ import { getCroppedImg } from './lib/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
 import { GradingInbox } from './components/GradingInbox';
-import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse } from './types';
+import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse, User } from './types';
 import { ROOT_FOLDERS } from './constants';
 import { cn } from './lib/utils';
 import { AssessmentPlayer } from './components/AssessmentPlayer';
 import { AssessmentBuilder } from './components/AssessmentBuilder';
 import { AssessmentAnalytics } from './components/AssessmentAnalytics';
+import { ReportsAndAnalytics } from './components/ReportsAndAnalytics';
 import { v4 as uuidv4 } from 'uuid';
 import { Assessment } from './types';
 import { ContinueLearningCarousel } from './components/ContinueLearningCarousel';
@@ -805,7 +806,7 @@ export default function App() {
   const [previousModule, setPreviousModule] = useState<{ tab: string, id: string | null } | null>(null);
 
   // User Management State
-  const [users, setUsers] = useState<any[]>(() => getInitialState('guesty_users', initialUsers));
+  const [users, setUsers] = useState<User[]>(() => getInitialState('guesty_users', initialUsers));
   const [powerUserProfiles, setPowerUserProfiles] = useState<any[]>(() => getInitialState('guesty_pu_profiles', initialPowerUserProfiles));
   const [auditLogs, setAuditLogs] = useState<any[]>(() => getInitialState('guesty_audit_logs', initialAuditLogs));
   const [activeProfileId, setActiveProfileId] = useState<string>('prof1');
@@ -2220,6 +2221,16 @@ export default function App() {
               </div>
 
             </div>
+          )}
+
+          {/* --- REPORTS & ANALYTICS --- */}
+          {activeTab === 'reports' && (
+            <ReportsAndAnalytics 
+              courses={courses}
+              users={users}
+              groups={groups}
+              attempts={attempts}
+            />
           )}
 
           {/* --- ADMIN USER MANAGEMENT --- */}

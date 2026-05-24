@@ -207,6 +207,41 @@ export const AssessmentAttemptReview: React.FC<AssessmentAttemptReviewProps> = (
                       })}
                     </div>
                   )}
+
+                  {question.type !== "open_ended" && (
+                    <div className="mt-4 p-5 bg-guesty-cream/40 border border-guesty-beige rounded-2xl space-y-4">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Configured Assessment Feedback</p>
+                        <div className="space-y-2">
+                          {question.correct_feedback && (
+                            <p className="text-xs font-bold text-guesty-nature flex items-start gap-2 leading-relaxed">
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-guesty-nature" />
+                              <span><span className="font-black text-guesty-black uppercase text-[10px]">If Correct:</span> {question.correct_feedback}</span>
+                            </p>
+                          )}
+                          {question.incorrect_feedback && (
+                            <p className="text-xs font-bold text-red-600 flex items-start gap-2 leading-relaxed">
+                              <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" />
+                              <span><span className="font-black text-guesty-black uppercase text-[10px]">If Incorrect:</span> {question.incorrect_feedback}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {question.answers.some(a => a.feedback) && (
+                        <div className="pt-3 border-t border-guesty-beige/50">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Option Feedbacks</p>
+                          <div className="space-y-1.5">
+                            {question.answers.map(a => a.feedback && (
+                              <p key={a.id} className="text-xs text-gray-700 font-semibold leading-relaxed">
+                                • <span className="font-bold text-gray-500">"{a.content}":</span> {a.feedback}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Grading Action */}
