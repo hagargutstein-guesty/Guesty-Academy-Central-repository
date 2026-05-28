@@ -14,6 +14,7 @@ import { getCroppedImg } from './lib/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { RepositoryDashboard } from './components/RepositoryDashboard';
 import { GradingInbox } from './components/GradingInbox';
+import { AssessmentsTab } from './components/AssessmentsTab';
 import { FileItem, Folder, AssessmentAttempt, Group, Course, LearningPlan, LearningPlanCourse, User } from './types';
 import { ROOT_FOLDERS } from './constants';
 import { cn } from './lib/utils';
@@ -1078,7 +1079,7 @@ export default function App() {
     { id: 'users', icon: <Users className="w-5 h-5" />, label: 'User Management' },
     { id: 'groups', icon: <ListTree className="w-5 h-5" />, label: 'Groups' },
     { id: 'courses', icon: <BookOpen className="w-5 h-5" />, label: 'Course Production' },
-    { id: 'grading-inbox', icon: <ListChecks className="w-5 h-5" />, label: 'Grading Inbox' },
+    { id: 'assessments', icon: <ListChecks className="w-5 h-5" />, label: 'Assessments' },
     { id: 'repository', icon: <Database className="w-5 h-5" />, label: 'Central Repository' },
     { id: 'reports', icon: <BarChart3 className="w-5 h-5" />, label: 'Reports & Data' },
     { id: 'settings', icon: <Settings className="w-5 h-5" />, label: 'Platform Settings' },
@@ -3554,18 +3555,16 @@ export default function App() {
             </div>
           )}
 
-          {/* --- ADMIN CENTRAL REPOSITORY --- */}
-          {environment === 'admin' && activeTab === 'grading-inbox' && (
-            <div className="h-full bg-guesty-cream/5 flex flex-col overflow-hidden">
-               <GradingInbox 
-                  assessments={repository}
+          {/* --- ADMIN STANDALONE UNIFIED ASSESSMENTS TAB --- */}
+          {environment === 'admin' && activeTab === 'assessments' && (
+            <div className="h-full overflow-y-auto p-8 custom-scrollbar">
+               <AssessmentsTab 
+                  repository={repository}
+                  setRepository={setRepository}
                   attempts={attempts}
                   onUpdateAttempt={handleSaveAssessmentAttempt}
-                  onReleaseGrades={(id) => {
-                    alert(`All grades for assessment ${id} have been released to learners.`);
-                    // We could update all attempts status to 'Graded' if not already, 
-                    // and maybe mark assessment as 'Grades Released'
-                  }}
+                  courses={courses}
+                  groups={groups}
                />
             </div>
           )}
@@ -4868,6 +4867,244 @@ export default function App() {
                     const activeModule = selectedCatalogCourse.modules?.[activeModuleIndex];
                     const activeAssessment = activeModule?.type === 'Assessment' ? repository.find(r => r.id === activeModule.id) : null;
                     
+                    if (activeAssessment && activeAssessment.assessmentData) {
+                      const assessmentData = activeAssessment.assessmentData;
+                      // Check for learner attempt (user_id === "learner-1")
+                      const learnerAttempt = attempts.find(att => 
+                        att.user_id === "learner-1" && 
+                        (att.assessment_id === activeAssessment.id || att.assessment_id === assessmentData.id)
+                      );
+
+                      if (learnerAttempt) {
+                        const isGraded = learnerAttempt.status === 'Graded';
+
+                        if (!isGraded) {
+                          return (
+                            <div className="text-center space-y-6 max-w-lg p-8 animate-in zoom-in-95 duration-500">
+                              <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-amber-500">
+                                <Clock className="w-10 h-10 animate-pulse" />
+                              </div>
+                              <div className="space-y-2">
+                                <h3 className="text-2xl font-serif italic text-white">{assessmentData.title}</h3>
+                                <div className="inline-block px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-black uppercase tracking-widest rounded-full">
+                                  Evaluation Pending
+                                </div>
+                              </div>
+                              <p className="text-zinc-400 text-sm leading-relaxed">
+                                Your response has been submitted successfully on {new Date(learnerAttempt.completed_at || learnerAttempt.started_at).toLocaleString()}. 
+                                Your line manager or instructor is currently grading the open-ended responses and providing customized feedback.
+                              </p>
+                              <div className="pt-4 border-t border-white/10 flex justify-center gap-4">
+                                <button 
+                                  onClick={() => {
+                                    setCurrentAssessment(assessmentData);
+                                    setShowAssessmentPlayer(true);
+                                  }}
+                                  className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-black uppercase tracking-wider transition-all"
+                                >
+                                  Take Again
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Fully Graded Review Mode
+                        return (
+                          <div className="w-full h-full overflow-y-auto p-8 text-left bg-[#121212] flex flex-col space-y-8 custom-scrollbar">
+                            
+                            {/* Score Card Banner */}
+                            <div className="p-6 rounded-[22px] bg-zinc-900 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                              <div>
+                                <h3 className="text-xl font-bold text-white mb-1">{assessmentData.title} Results</h3>
+                                <p className="text-xs font-bold text-guesty-nature flex items-center gap-1">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span>Evaluated and finalized by your instructor</span>
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-6 bg-zinc-950 px-5 py-3 rounded-xl border border-white/5">
+                                <div className="text-right">
+                                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Calculated Score</p>
+                                  <p className="text-sm font-black text-white">{learnerAttempt.score} / {learnerAttempt.max_score} pts</p>
+                                </div>
+                                <div className="h-8 w-px bg-white/10" />
+                                <div className="flex flex-col items-center">
+                                  <p className={`text-2xl font-black ${learnerAttempt.passed ? "text-guesty-nature" : "text-guesty-coral"}`}>
+                                    {learnerAttempt.percentage}%
+                                  </p>
+                                  <span className={`text-[8px] font-black uppercase tracking-widest ${learnerAttempt.passed ? "text-guesty-nature" : "text-guesty-coral"}`}>
+                                    {learnerAttempt.passed ? "PASSED" : "FAILED / NEEDS STUDY"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Question Details and Instructor Feedbacks */}
+                            <div className="space-y-6">
+                              <h4 className="text-xs font-black text-zinc-400 uppercase tracking-[0.2em] border-b border-white/15 pb-2">Completed Questions Review</h4>
+                              
+                              {assessmentData.questions.map((question, qIdx) => {
+                                const userResponse = learnerAttempt.responses?.[question.id];
+                                const hasManualGrade = learnerAttempt.manual_grades?.[question.id];
+                                
+                                // Automatic vs manual score evaluation display helper
+                                let pointsEarned = 0;
+                                if (question.type === 'open_ended') {
+                                  pointsEarned = hasManualGrade?.score ?? 0;
+                                } else if (question.type === 'single_choice' || question.type === 'likert_scale') {
+                                  pointsEarned = userResponse === question.answers.find(a => a.is_correct)?.id ? question.points : 0;
+                                } else if (question.type === 'multiple_choice') {
+                                  const ansList = (userResponse as string[]) || [];
+                                  const correctAnswers = question.answers.filter(a => a.is_correct).map(a => a.id);
+                                  const allCorrect = correctAnswers.every(id => ansList.includes(id)) && ansList.every(id => correctAnswers.includes(id));
+                                  pointsEarned = allCorrect ? question.points : 0;
+                                }
+                                
+                                const isCorrect = pointsEarned === question.points;
+
+                                return (
+                                  <div key={question.id} className="bg-zinc-900/40 p-5 rounded-2xl border border-white/10 space-y-4">
+                                    <div className="flex justify-between items-start gap-3">
+                                      <div className="flex items-start gap-3">
+                                        <div className="w-7 h-7 bg-zinc-800 text-zinc-400 rounded flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                                          {qIdx + 1}
+                                        </div>
+                                        <div>
+                                          <h5 className="text-sm font-bold text-white leading-snug">{question.content}</h5>
+                                          <p className="text-[9px] font-black uppercase tracking-wider text-zinc-500 mt-1">
+                                            {question.type.replace('_', ' ')} • {question.points} Points Available
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded ${
+                                        question.type === 'open_ended' 
+                                          ? "bg-zinc-800 text-zinc-300"
+                                          : isCorrect ? "bg-guesty-nature/10 text-guesty-nature" : "bg-red-500/10 text-red-500"
+                                      }`}>
+                                        {question.type === 'open_ended' ? `${pointsEarned} / ${question.points} pts` : isCorrect ? "Correct" : "Incorrect"}
+                                      </div>
+                                    </div>
+
+                                    {/* Response description */}
+                                    <div className="pl-10 space-y-3">
+                                      
+                                      {/* Standard choice elements list */}
+                                      {question.type !== 'open_ended' && (
+                                        <div className="grid grid-cols-1 gap-2">
+                                          {question.answers.map(ans => {
+                                            const isSelected = Array.isArray(userResponse) 
+                                              ? userResponse.includes(ans.id) 
+                                              : userResponse === ans.id;
+
+                                            return (
+                                              <div 
+                                                key={ans.id}
+                                                className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-between ${
+                                                  isSelected 
+                                                    ? (ans.is_correct ? "bg-guesty-nature/5 border-guesty-nature text-zinc-100" : "bg-red-500/5 border-red-500/45 text-red-100")
+                                                    : (ans.is_correct ? "border-dashed border-guesty-nature/40 text-guesty-nature" : "border-white/5 opacity-40 text-zinc-400")
+                                                }`}
+                                              >
+                                                <span>{ans.content}</span>
+                                                {isSelected && (
+                                                  <span className="text-[8px] font-black uppercase tracking-wider">
+                                                    {ans.is_correct ? "Your Choice (Correct)" : "Your Choice (Incorrect)"}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {/* Open-Ended typed representation */}
+                                      {question.type === 'open_ended' && (
+                                        <div className="bg-zinc-950/50 p-4 border border-white/5 rounded-xl">
+                                          <span className="text-[8px] font-black uppercase tracking-wider text-zinc-500 block mb-2">My Submitted Response:</span>
+                                          <p className="text-xs text-zinc-300 italic whitespace-pre-wrap leading-relaxed">
+                                            "{(typeof userResponse === 'object' && userResponse !== null && !Array.isArray(userResponse)) ? (userResponse as any).text : (userResponse || 'No responses recorded.')}"
+                                          </p>
+
+                                          {/* Pictures uploaded */}
+                                          {typeof userResponse === 'object' && userResponse !== null && !Array.isArray(userResponse) && (userResponse as any).files && (userResponse as any).files.length > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-white/10 flex gap-2">
+                                              {(userResponse as any).files.map((fileUrl: string, idx: number) => (
+                                                <img 
+                                                  key={idx} 
+                                                  src={fileUrl} 
+                                                  referrerPolicy="no-referrer"
+                                                  className="w-16 h-16 rounded object-cover border border-white/10 bg-black" 
+                                                  alt="Attachment" 
+                                                />
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Auto Configured System Feedbacks */}
+                                      {question.type !== 'open_ended' && (
+                                        <div className="p-3 bg-zinc-950/35 border border-white/5 rounded-xl space-y-1">
+                                          {isCorrect && question.correct_feedback && (
+                                            <p className="text-xs text-guesty-nature flex items-start gap-1.5 leading-snug">
+                                              <span>•</span>
+                                              <span>{question.correct_feedback}</span>
+                                            </p>
+                                          )}
+                                          {!isCorrect && question.incorrect_feedback && (
+                                            <p className="text-xs text-red-400 flex items-start gap-1.5 leading-snug">
+                                              <span>•</span>
+                                              <span>{question.incorrect_feedback}</span>
+                                            </p>
+                                          )}
+                                          
+                                          {/* Option specific feedbacks */}
+                                          {question.answers.map(ans => ans.feedback && (Array.isArray(userResponse) ? userResponse.includes(ans.id) : userResponse === ans.id) && (
+                                            <p key={ans.id} className="text-xs text-zinc-300 flex items-start gap-1.5 leading-snug">
+                                              <span className="text-zinc-500 font-bold">Feedback on "{ans.content}":</span>
+                                              <span>{ans.feedback}</span>
+                                            </p>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Customized Instructor Manual score Feedbacks for Open-Ended */}
+                                      {question.type === 'open_ended' && hasManualGrade && (
+                                        <div className="p-4 bg-guesty-ocean/10 border-l-4 border-guesty-ocean rounded-r-xl space-y-1">
+                                          <div className="flex justify-between text-[9px] font-black text-guesty-powder uppercase tracking-widest">
+                                            <span>Instructor Feedback Comment</span>
+                                            <span className="text-white">Awarded: {hasManualGrade.score} / {question.points} pts</span>
+                                          </div>
+                                          <p className="text-xs font-bold text-white italic leading-relaxed pt-1">
+                                            "{hasManualGrade.feedback || 'No written guidance comments submitted.'}"
+                                          </p>
+                                        </div>
+                                      )}
+
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Option to re-take if needed */}
+                            <div className="pt-6 border-t border-white/10 flex justify-center">
+                              <button 
+                                onClick={() => {
+                                  setCurrentAssessment(assessmentData);
+                                  setShowAssessmentPlayer(true);
+                                }}
+                                className="px-8 py-3 bg-guesty-ocean hover:bg-[#2b8a9e] text-white font-bold rounded-full text-xs font-black uppercase tracking-widest tracking-wider transition-all"
+                              >
+                                Retake Assessment
+                              </button>
+                            </div>
+
+                          </div>
+                        );
+                      }
+                    }
+
                     return (
                       <div className="text-center space-y-6 animate-in zoom-in-95 duration-700">
                         <div className="w-24 h-24 bg-guesty-ocean/20 rounded-full flex items-center justify-center mx-auto">

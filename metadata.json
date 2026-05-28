@@ -1,5 +1,6 @@
 {
   "name": "Central Repository Folder Organization System",
   "description": "A training material repository with mandatory folder hierarchy: Internal, Customer, and Archived training.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

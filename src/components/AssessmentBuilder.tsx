@@ -64,6 +64,39 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
 
   const isSurvey = assessment.subType === "Survey";
 
+  const [isAutoPoints, setIsAutoPoints] = useState<boolean>(() => {
+    if (!initialData || !initialData.questions || initialData.questions.length === 0) return true;
+    const questions = initialData.questions;
+    const total = questions.reduce((s, q) => s + (q.points || 0), 0);
+    if (total !== 100) return false;
+    const base = Math.floor(100 / questions.length);
+    return questions.every(q => Math.abs((q.points || 0) - base) <= 1);
+  });
+
+  // Automatically distribute points to sum up to exactly 100
+  useEffect(() => {
+    if (isAutoPoints && assessment.questions.length > 0 && !isSurvey) {
+      const count = assessment.questions.length;
+      const basePoint = Math.floor(100 / count);
+      const remainder = 100 % count;
+      
+      const needsUpdate = assessment.questions.some((q, idx) => {
+        const expectedPoint = basePoint + (idx < remainder ? 1 : 0);
+        return q.points !== expectedPoint;
+      });
+
+      if (needsUpdate) {
+        setAssessment(prev => ({
+          ...prev,
+          questions: prev.questions.map((q, idx) => ({
+            ...q,
+            points: basePoint + (idx < remainder ? 1 : 0)
+          }))
+        }));
+      }
+    }
+  }, [isAutoPoints, assessment.questions.length, isSurvey]);
+
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
     assessment.questions[0]?.id || null
   );
@@ -166,6 +199,31 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
           if (q.type !== "open_ended" && q.type !== "likert_scale" && !q.answers.some(a => a.is_correct)) {
             throw new Error(`Question "${q.content}" requires at least one correct answer.`);
           }
+        }
+
+        const totalPoints = assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+        if (totalPoints !== 100) {
+          const count = assessment.questions.length;
+          let currentSum = 0;
+          const scaledQuestions = assessment.questions.map((q, idx) => {
+            const ratio = (q.points || 1) / (totalPoints || 1);
+            let val = Math.round(ratio * 100);
+            if (idx === count - 1) {
+              val = 100 - currentSum;
+            } else {
+              currentSum += val;
+            }
+            return { ...q, points: val };
+          });
+          
+          setError(`Notice: Total points was ${totalPoints}. Points have been auto-normalized to reach exactly 100.`);
+          setTimeout(() => {}, 2000);
+          
+          await onSave({
+            ...assessment,
+            questions: scaledQuestions
+          });
+          return;
         }
       }
 
@@ -352,9 +410,11 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                   <span className="text-[10px] font-black uppercase tracking-tighter text-gray-400 bg-gray-100 px-1.5 rounded">
                     {q.type.replace('_', ' ')}
                   </span>
-                  <span className="text-[10px] font-bold text-guesty-nature">
-                    {q.points} pt
-                  </span>
+                  {!isSurvey && (
+                    <span className="text-[10px] font-bold text-guesty-nature">
+                      {q.points} pt
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -445,7 +505,10 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                           <input 
                             type="number"
                             value={activeQuestion.points}
-                            onChange={(e) => updateQuestion(activeQuestion.id, { points: parseInt(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              setIsAutoPoints(false);
+                              updateQuestion(activeQuestion.id, { points: parseInt(e.target.value) || 0 });
+                            }}
                             className="w-12 bg-transparent text-xs font-black text-guesty-nature focus:outline-none"
                           />
                         </div>
@@ -842,6 +905,76 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                   </button>
                 )}
               </div>
+              {/* Base 100 Scoring Engine Section */}
+              {!isSurvey && (
+                <div className="md:col-span-6 bg-gray-50/60 border border-gray-100 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-guesty-ice rounded-xl text-guesty-nature">
+                      <Target className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Base 100 Scoring Engine</h4>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border",
+                          assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0) === 100
+                            ? "bg-green-150/10 text-guesty-nature border-guesty-nature/20"
+                            : "bg-amber-100 text-amber-700 border-amber-200"
+                        )}>
+                          Current sum: {assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0)}%
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Each quiz totals 100%. Auto-distributes parts equally across overall questions, or manually override weights to customize.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={isAutoPoints}
+                        onChange={(e) => {
+                          setIsAutoPoints(e.target.checked);
+                        }}
+                        className="w-4 h-4 rounded border-gray-350 text-guesty-nature focus:ring-guesty-nature/30"
+                      />
+                      <span className="text-[10px] font-black text-gray-650 uppercase tracking-wide select-none">Auto-Distribute</span>
+                    </label>
+                    
+                    {!isAutoPoints && (
+                      <button 
+                        onClick={() => {
+                          const total = assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+                          if (total > 0 && assessment.questions.length > 0) {
+                            const count = assessment.questions.length;
+                            let currentSum = 0;
+                            const scaledQuestions = assessment.questions.map((q, idx) => {
+                              const ratio = (q.points || 1) / total;
+                              let val = Math.round(ratio * 100);
+                              if (idx === count - 1) {
+                                val = 100 - currentSum;
+                              } else {
+                                currentSum += val;
+                              }
+                              return { ...q, points: val };
+                            });
+                            setAssessment(prev => ({ ...prev, questions: scaledQuestions }));
+                            setError("Ratios normalized to exactly 100!");
+                            setTimeout(() => setError(null), 3000);
+                          } else {
+                            setIsAutoPoints(true);
+                          }
+                        }}
+                        className="bg-white hover:bg-guesty-ice/60 border border-guesty-nature/25 text-guesty-nature text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        Normalize to 100%
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Answer Key URL */}
               <div className="md:col-span-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1.5">Answer Key Link (Drive)</label>
