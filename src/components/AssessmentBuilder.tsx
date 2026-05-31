@@ -203,27 +203,7 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
 
         const totalPoints = assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0);
         if (totalPoints !== 100) {
-          const count = assessment.questions.length;
-          let currentSum = 0;
-          const scaledQuestions = assessment.questions.map((q, idx) => {
-            const ratio = (q.points || 1) / (totalPoints || 1);
-            let val = Math.round(ratio * 100);
-            if (idx === count - 1) {
-              val = 100 - currentSum;
-            } else {
-              currentSum += val;
-            }
-            return { ...q, points: val };
-          });
-          
-          setError(`Notice: Total points was ${totalPoints}. Points have been auto-normalized to reach exactly 100.`);
-          setTimeout(() => {}, 2000);
-          
-          await onSave({
-            ...assessment,
-            questions: scaledQuestions
-          });
-          return;
+          throw new Error(`Real-time validation error: Total sum is ${totalPoints} pts. The point sum must be exactly 100 points before saving in order to satisfy the requirements. Please adjust individual points or toggle "Auto-Distribute Points" below to instantly fix.`);
         }
       }
 
@@ -336,10 +316,16 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
         <div className="p-6 border-b border-gray-100 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-black text-gray-900 tracking-tight">Questions</h3>
-            <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-full uppercase tracking-widest">
-              {assessment.questions.length} total
+            <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full uppercase tracking-widest">
+              {assessment.questions.length} Items ({assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0)}/100 pts)
             </span>
           </div>
+          {assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0) !== 100 && !isSurvey && (
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold rounded-xl flex items-center gap-1.5 justify-center uppercase tracking-wider animate-pulse">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+              <span>Sum must equal 100 pts!</span>
+            </div>
+          )}
 
           {/* Quiz / Survey Toggle */}
           <div className="flex p-1 bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -411,9 +397,22 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                     {q.type.replace('_', ' ')}
                   </span>
                   {!isSurvey && (
-                    <span className="text-[10px] font-bold text-guesty-nature">
-                      {q.points} pt
-                    </span>
+                    <div className="flex items-center gap-1 bg-gray-100 px-1.5 py-0.5 rounded select-none">
+                      <span className="text-[9px] font-black uppercase text-gray-400">Pts:</span>
+                      <input 
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={q.points || 0}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          setIsAutoPoints(false);
+                          const val = parseInt(e.target.value) || 0;
+                          updateQuestion(q.id, { points: val });
+                        }}
+                        className="w-10 shrink-0 bg-transparent text-[11px] font-black text-guesty-nature p-0 focus:outline-none focus:ring-0 focus:border-transparent text-center"
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -921,11 +920,11 @@ export const AssessmentBuilder: React.FC<AssessmentBuilderProps> = ({
                             ? "bg-green-150/10 text-guesty-nature border-guesty-nature/20"
                             : "bg-amber-100 text-amber-700 border-amber-200"
                         )}>
-                          Current sum: {assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0)}%
+                          Current sum: {assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0)}/100 pts
                         </span>
                       </div>
                       <p className="text-[11px] text-gray-500 mt-0.5">
-                        Each quiz totals 100%. Auto-distributes parts equally across overall questions, or manually override weights to customize.
+                        Each quiz totals 100 points. Auto-distributes parts equally across overall questions, or manually override weights to customize.
                       </p>
                     </div>
                   </div>

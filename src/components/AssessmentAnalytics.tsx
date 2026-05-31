@@ -422,7 +422,7 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                       <FileText className="w-4 h-4 text-guesty-nature" />
                       <span className="text-[10px] font-black uppercase tracking-widest">Avg. Score</span>
                     </div>
-                    <p className="text-3xl font-black text-guesty-nature">{stats.avgScore}%</p>
+                    <p className="text-3xl font-black text-guesty-nature">{stats.avgScore}/100</p>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-50 text-[9px] font-bold text-gray-450 uppercase tracking-wide space-y-0.5">
                     <div className="truncate"><span className="text-gray-400 font-semibold">Parent:</span> {assessment.title}</div>
@@ -450,7 +450,7 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                       <Clock className="w-4 h-4 text-gray-500" />
                       <span className="text-[10px] font-black uppercase tracking-widest">Passing Grade</span>
                     </div>
-                    <p className="text-3xl font-black text-gray-900">{assessment.passing_score}%</p>
+                    <p className="text-3xl font-black text-gray-900">{assessment.passing_score}/100</p>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-50 text-[9px] font-bold text-gray-450 uppercase tracking-wide space-y-0.5">
                     <div className="truncate"><span className="text-gray-400 font-semibold">Parent:</span> {assessment.title}</div>
@@ -537,7 +537,7 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                     <div className="absolute inset-0 rounded-full border-4 border-gray-150" />
                     <div className="absolute inset-0 rounded-full border-4 border-guesty-nature border-t-transparent animate-[spin_5s_linear_infinite]" />
                     <p className="text-sm font-black text-gray-900">
-                      {isSurvey ? `${surveyResponseRate}%` : `${stats.avgScore}%`}
+                      {isSurvey ? `${surveyResponseRate}%` : `${stats.avgScore}/100`}
                     </p>
                   </div>
                   <div>
@@ -572,7 +572,7 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                               <span className="font-black text-guesty-nature">
                                 {isSurvey 
                                   ? `${scoreRatio}% Rate` 
-                                  : (course.avgScore !== null ? `${course.avgScore}%` : 'No attempts')}
+                                  : (course.avgScore !== null ? `${course.avgScore}/100` : 'No attempts')}
                               </span>
                             </div>
                             <div className="h-2 bg-gray-105 rounded-full overflow-hidden">
@@ -880,9 +880,9 @@ export const AssessmentAnalytics: React.FC<AssessmentAnalyticsProps> = ({
                             "text-lg font-black",
                             attempt.passed ? "text-guesty-nature" : "text-red-500"
                           )}>
-                            {attempt.percentage}%
+                            {attempt.score}/{attempt.max_score}
                           </p>
-                          <p className="text-[9px] font-bold text-gray-400">{attempt.score}/{attempt.max_score} pts</p>
+                          <p className="text-[9px] font-bold text-gray-400">Total Points</p>
                         </div>
                       </td>
                       <td className="px-4 py-6 text-center">

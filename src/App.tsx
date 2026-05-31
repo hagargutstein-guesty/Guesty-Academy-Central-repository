@@ -28,6 +28,80 @@ import { ContinueLearningCarousel } from './components/ContinueLearningCarousel'
 import { NavigationGrid } from './components/NavigationGrid';
 import { CourseThumbnail } from './components/CourseThumbnail';
 
+// --- CIRCULAR PROGRESS GAUGE COMPONENT ---
+const CircularProgressGauge = ({ score, isMasked }: { score: number; isMasked?: boolean }) => {
+  const radius = 14;
+  const strokeWidth = 3;
+  const circumference = 2 * Math.PI * radius; // ~87.96
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+
+  let colorHex = "#327A5B"; // Guesty Green (>=80)
+  let bgClass = "bg-guesty-nature/10";
+  let textClass = "text-guesty-nature";
+  let ratingLabel = "EXCELLENT";
+
+  if (isMasked) {
+    colorHex = "#FF9D00"; // Guesty Amber
+    bgClass = "bg-amber-50";
+    textClass = "text-amber-600";
+    ratingLabel = "MASKED";
+  } else if (score < 60) {
+    colorHex = "#E54F35"; // Guesty Coral/Red (<60)
+    bgClass = "bg-red-50";
+    textClass = "text-red-500";
+    ratingLabel = "REDO";
+  } else if (score < 80) {
+    colorHex = "#FF9D00"; // Guesty Amber (60 to 79)
+    bgClass = "bg-amber-50";
+    textClass = "text-amber-600";
+    ratingLabel = "PASSING";
+  }
+
+  return (
+    <div 
+      className={`flex items-center gap-2 ${bgClass} backdrop-blur-sm px-2.5 py-1.5 rounded-2xl shadow-md border border-white/50 select-none`} 
+      title={isMasked ? "Evaluation pending/unpublished" : `Course Weighted Score: ${score}/100`}
+    >
+      <div className="relative w-8 h-8 flex items-center justify-center">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+          <circle 
+            className="text-black/[0.05]"
+            strokeWidth={strokeWidth}
+            stroke="currentColor"
+            fill="transparent"
+            r={radius}
+            cx="18"
+            cy="18"
+          />
+          {!isMasked && (
+            <circle 
+              className="transition-all duration-700 ease-out"
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              stroke={colorHex}
+              fill="transparent"
+              r={radius}
+              cx="18"
+              cy="18"
+            />
+          )}
+        </svg>
+        <span className="absolute text-[10px] font-black tracking-tight" style={{ color: colorHex }}>
+          {isMasked ? "—" : `${score}`}
+        </span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest leading-none">Score</span>
+        <span className={`text-[9px] font-black ${textClass} leading-none mt-0.5 tracking-tight`}>
+          {isMasked ? "Masked" : `${score}/100`}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 // --- MOCK DATA ---
 const activeLearningPlans: LearningPlan[] = [
   {
@@ -594,6 +668,9 @@ export default function App() {
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
   const [showAssessmentPlayer, setShowAssessmentPlayer] = useState(false);
   const [currentAssessment, setCurrentAssessment] = useState<any>(null);
+  const [showLearnerFeedbackModal, setShowLearnerFeedbackModal] = useState(false);
+  const [feedbackSelectedAttempt, setFeedbackSelectedAttempt] = useState<any | null>(null);
+  const [feedbackSelectedAssessment, setFeedbackSelectedAssessment] = useState<any | null>(null);
   const [showCourseWizard, setShowCourseWizard] = useState(false);
   const [courseWizardStep, setCourseWizardStep] = useState(1);
   const [newCourseData, setNewCourseData] = useState({
@@ -909,6 +986,211 @@ export default function App() {
       localStorage.setItem('guesty_assessment_attempts', JSON.stringify(next));
       return next;
     });
+  };
+
+  const calculateCourseScores = useCallback((courseId: string) => {
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return null;
+
+    const assessmentModules = course.modules?.filter((m: any) => m.type === 'Assessment') || [];
+
+    let totalPointsEarned = 0;
+    let totalMaxPoints = 0;
+    let hasPendingOrUnpublished = false;
+    let evaluatedItemsCount = 0;
+
+    assessmentModules.forEach((mod: any) => {
+      const repoItem = repository.find(r => r.id === mod.id || r.id === mod.assetId);
+      if (!repoItem || !repoItem.assessmentData) return;
+
+      const assessmentData = repoItem.assessmentData;
+      const hasOpenEnded = assessmentData.questions?.some((q: any) => q.type === 'open_ended');
+
+      const attempt = attempts.find(att => 
+        att.user_id === 'learner-1' && 
+        (att.assessment_id === repoItem.id || att.assessment_id === assessmentData.id)
+      );
+
+      if (attempt) {
+        if (hasOpenEnded && attempt.status !== 'Graded') {
+          hasPendingOrUnpublished = true;
+        } else {
+          totalPointsEarned += attempt.score ?? 0;
+          totalMaxPoints += attempt.max_score ?? 0;
+          evaluatedItemsCount++;
+        }
+      }
+    });
+
+    const generalAttempts = attempts.filter(att => att.user_id === 'learner-1' && att.course_id === courseId);
+    generalAttempts.forEach(att => {
+      const alreadyHandled = assessmentModules.some((m: any) => m.id === att.assessment_id || m.assetId === att.assessment_id);
+      if (!alreadyHandled) {
+        const repoItem = repository.find(r => r.id === att.assessment_id);
+        const hasOpenEnded = repoItem?.assessmentData?.questions?.some((q: any) => q.type === 'open_ended');
+        if (hasOpenEnded && att.status !== 'Graded') {
+          hasPendingOrUnpublished = true;
+        } else {
+          totalPointsEarned += att.score ?? 0;
+          totalMaxPoints += att.max_score ?? 0;
+          evaluatedItemsCount++;
+        }
+      }
+    });
+
+    const DEFAULT_COURSE_SCORES: Record<string, number> = {
+      'c1': 88,
+      'c2': 92,
+      'lp2-c1': 85,
+    };
+
+    let percentage = 0;
+    if (totalMaxPoints > 0) {
+      percentage = Math.round((totalPointsEarned / totalMaxPoints) * 100);
+    } else {
+      percentage = DEFAULT_COURSE_SCORES[courseId] || 85; 
+    }
+
+    return {
+      score: percentage,
+      hasPendingOrUnpublished,
+      hasGradableItems: evaluatedItemsCount > 0 || !!DEFAULT_COURSE_SCORES[courseId]
+    };
+  }, [courses, repository, attempts]);
+
+  const isModuleCompletedForLearner = (course: any, index: number, mod: any) => {
+    if (course.progress === 100) return true;
+    if (!course.progress) return false;
+    
+    // If it is the active player course being played, use current player position
+    if (selectedCatalogCourse && selectedCatalogCourse.id === course.id && activeTab === 'course-player') {
+      return index < activeModuleIndex;
+    }
+    
+    // Otherwise fallback to proportional course progress
+    if (course.modules && course.modules.length > 0) {
+      const completedCount = Math.floor((course.progress / 100) * course.modules.length);
+      return index < completedCount;
+    }
+    return false;
+  };
+
+  const getModuleScoreInfo = (course: any, mod: any, index: number) => {
+    const isCompleted = isModuleCompletedForLearner(course, index, mod);
+    if (!isCompleted) return null;
+
+    if (mod.type === 'Assessment') {
+      const repoItem = repository.find(r => r.id === mod.id || r.id === mod.assetId);
+      if (!repoItem || !repoItem.assessmentData) return null;
+      const assessmentData = repoItem.assessmentData;
+      const attempt = attempts.find(att => 
+        att.user_id === "learner-1" && 
+        (att.assessment_id === repoItem.id || att.assessment_id === assessmentData.id)
+      );
+      if (attempt) {
+        const hasOpenEnded = assessmentData.questions?.some((q: any) => q.type === 'open_ended');
+        const isUnpublished = hasOpenEnded && attempt.status !== 'Graded';
+        if (isUnpublished) {
+          return {
+            isAssessment: true,
+            isMasked: true,
+            attempt,
+            assessment: assessmentData
+          };
+        }
+        return {
+          score: attempt.score,
+          max_score: attempt.max_score || 100,
+          isAssessment: true,
+          isMasked: false,
+          attempt,
+          assessment: assessmentData
+        };
+      }
+      return null;
+    }
+
+    // Non-assessments: SCORM, Video, PDF, Checklist etc.
+    const title = mod.title || '';
+    let score = 100;
+    let max_score = 100;
+
+    if (mod.type === 'Video') {
+      score = 10;
+      max_score = 10;
+    } else if (mod.type === 'SCORM') {
+      if (title.includes('Security')) {
+        score = 85;
+        max_score = 100;
+      } else if (title.includes('Python')) {
+        score = 95;
+        max_score = 100;
+      } else if (title.includes('Modeling')) {
+        score = 80;
+        max_score = 100;
+      } else {
+        score = 90;
+        max_score = 100;
+      }
+    } else if (mod.type === 'PDF') {
+      score = 5;
+      max_score = 5;
+    } else {
+      score = 25;
+      max_score = 25;
+    }
+
+    // Prepare robust virtual assessment & attempt payload
+    const virtualAssessment = {
+      id: mod.id || `v-assess-${mod.type}-${index}`,
+      title: mod.title,
+      subType: 'Quiz',
+      passing_score: 80,
+      questions: [
+        {
+          id: 'v-q1',
+          content: `${mod.type} Courseware Progress Audit for "${mod.title}"`,
+          type: 'single_choice',
+          points: max_score,
+          answers: [
+            { id: 'v-a1', content: 'Playback/Activity tracked completely, all interaction data synchronized successfully.', is_correct: true }
+          ]
+        }
+      ]
+    };
+
+    const virtualAttempt = {
+      id: `v-attempt-${mod.type}-${index}`,
+      assessment_id: virtualAssessment.id,
+      user_id: 'learner-1',
+      user_name: 'Hagar Gutstein',
+      score: score,
+      max_score: max_score,
+      percentage: Math.round((score / max_score) * 100),
+      passed: score / max_score >= 0.8,
+      status: 'Graded',
+      responses: {
+        'v-q1': 'v-a1'
+      },
+      manual_grades: {
+        'v-q1': {
+          score: score,
+          max_score: max_score,
+          feedback: mod.type === 'Video' 
+            ? `User stayed actively engaged throughout the entirety of the video lecture. Playback interactions and knowledge checks completed successfully.`
+            : `SCORM player interaction finished successfully. Final session grade is verified and stored under state: COMPLETED.`
+        }
+      }
+    };
+
+    return {
+      score,
+      max_score,
+      isAssessment: false,
+      isMasked: false,
+      assessment: virtualAssessment,
+      attempt: virtualAttempt
+    };
   };
 
   useEffect(() => {
@@ -2078,6 +2360,24 @@ export default function App() {
                                         )}>
                                           {course.status}
                                         </span>
+                                        {course.status === 'Completed' && (() => {
+                                          const scoreData = calculateCourseScores(course.id);
+                                          if (scoreData) {
+                                            if (scoreData.hasPendingOrUnpublished) {
+                                              return (
+                                                <span className="inline-flex items-center gap-1 bg-orange-500/10 text-orange-600 text-[10px] font-black px-2 py-0.5 rounded-full border border-orange-500/20 ml-2 animate-pulse" title="Grading in progress">
+                                                  Grade: Masked
+                                                </span>
+                                              );
+                                            }
+                                            return (
+                                              <span className="inline-flex items-center gap-1 bg-guesty-nature/10 text-guesty-nature text-[10px] font-black px-2 py-0.5 rounded-full border border-guesty-nature/20 ml-2">
+                                                Grade: {scoreData.score}/100
+                                              </span>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -4501,6 +4801,37 @@ export default function App() {
                                   <p className="text-xs text-guesty-forest/60">{mod.type}</p>
                                 </div>
                               </div>
+                              {(() => {
+                                const scoreInfo = getModuleScoreInfo(selectedCatalogCourse, mod, idx);
+                                if (!scoreInfo) return null;
+
+                                if (scoreInfo.isMasked) {
+                                  return (
+                                    <div className="flex items-center shrink-0">
+                                      <span className="text-[10px] font-black text-orange-600 bg-orange-100 border border-orange-200 uppercase tracking-widest px-2.5 py-1.5 rounded-xl cursor-help animate-pulse" title="Grade is hidden until instructor publishes feedback." onClick={(e) => { e.stopPropagation(); }}>
+                                        Masked
+                                      </span>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setFeedbackSelectedAttempt(scoreInfo.attempt);
+                                      setFeedbackSelectedAssessment(scoreInfo.assessment);
+                                      setShowLearnerFeedbackModal(true);
+                                    }}
+                                    className="flex items-center shrink-0 self-center bg-guesty-nature hover:bg-opacity-90 active:scale-95 text-white text-xs font-black px-3 py-1.5 rounded-full border border-guesty-nature/20 transition-all shadow-sm gap-1 cursor-pointer"
+                                    title="Click to view detailed feedback & results breakdown"
+                                  >
+                                    <span>Score: {scoreInfo.score}/{scoreInfo.max_score}</span>
+                                    <ExternalLink className="w-3 h-3 text-white" />
+                                  </button>
+                                );
+                              })()}
                             </div>
                           ))}
                           {(!selectedCatalogCourse.modules || selectedCatalogCourse.modules.length === 0) && (
@@ -4633,75 +4964,97 @@ export default function App() {
                           }
                           
                           return isVisible && (c.isPinned || isVisible);
-                        }).slice(0, 4).map((course) => (
-                          <div key={`rec-${course.id}`} className="bg-white rounded-[24px] border border-guesty-ocean/30 shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col p-2 relative">
-                            {course.isPinned && (
-                              <div className="absolute top-4 right-4 z-10 bg-guesty-ocean text-white p-1.5 rounded-full shadow-md">
-                                <Pin className="w-3.5 h-3.5" />
-                              </div>
-                            )}
-                            <div className="h-48 overflow-hidden relative rounded-[16px]">
-                              <CourseThumbnail 
-                                title={course.title} 
-                                audience={course.audience} 
-                                status={course.status}
-                                category={course.category}
-                                backgroundImage={!course.useDynamicThumbnail ? course.thumbnail : undefined}
-                                className="h-full"
-                              />
-                              <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
-                                  <PlayCircle className="w-5 h-5" /> {course.progress && course.progress > 0 ? 'Continue' : 'Start Course'}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="p-5 flex flex-col flex-1">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2 text-xs font-bold text-guesty-forest/60 uppercase tracking-widest">
-                                  <BookOpen className="w-4 h-4" /> {course.format}
-                                </div>
-                                <div className="flex items-center gap-1 text-xs font-bold text-guesty-forest/60">
-                                  <Clock className="w-3 h-3" /> {course.duration}
-                                </div>
-                              </div>
-                              <h3 className="text-xl font-bold text-guesty-black leading-tight mb-2 group-hover:text-guesty-nature transition-colors">
-                                {course.title}
-                              </h3>
-                              <p className="text-sm text-guesty-forest/70 line-clamp-2 mb-4">{course.description}</p>
-                              
-                              <div className="mt-auto pt-4 flex items-center justify-between border-t border-guesty-beige/50 relative">
-                                <span className="text-xs font-bold text-guesty-forest/50 bg-guesty-ice px-2 py-1 rounded-md">{course.difficulty}</span>
-                                <div className="flex items-center gap-2">
-                                  <button onClick={() => setSelectedCatalogCourse(course)} className={`text-sm font-bold ${course.progress && course.progress > 0 ? 'text-guesty-nature' : theme.textPrimary} hover:opacity-80 transition-opacity flex items-center gap-1.5`}>
-                                    {course.progress && course.progress > 0 ? 'Continue Learning' : 'Start Course'} <ChevronRight className="w-4 h-4" />
-                                  </button>
-                                  <div className="relative">
-                                    <button onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === `course-${course.id}` ? null : `course-${course.id}`); }} className="p-1.5 text-guesty-forest/60 hover:text-guesty-black rounded-full hover:bg-guesty-beige transition-colors">
-                                      <MoreVertical className="w-4 h-4" />
-                                    </button>
-                                    {openDropdownId === `course-${course.id}` && (
-                                      <div className="absolute bottom-full right-0 mb-2 w-56 bg-white rounded-[12px] shadow-lg border border-guesty-beige py-2 z-50">
-                                        <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
-                                          <Info className="w-4 h-4" /> View Details
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              {course.progress !== undefined && course.progress > 0 && (
-                                <div className="mt-3">
-                                  <div className="flex justify-between text-[10px] font-bold mb-1">
-                                    <span className="text-guesty-nature">{course.progress}% Completed</span>
-                                  </div>
-                                  <div className="w-full h-1.5 bg-guesty-beige rounded-full overflow-hidden">
-                                    <div className="h-full bg-guesty-nature rounded-full" style={{ width: `${course.progress}%` }}></div>
-                                  </div>
+                        }).slice(0, 4).map((course) => {
+                          const scores = calculateCourseScores(course.id);
+                          const progressVal = course.progress !== undefined ? course.progress : 0;
+                          return (
+                            <div key={`rec-${course.id}`} className="bg-white rounded-[24px] border border-guesty-ocean/30 shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col p-2 relative">
+                              {course.isPinned && (
+                                <div className="absolute top-4 right-4 z-10 bg-guesty-ocean text-white p-1.5 rounded-full shadow-md">
+                                  <Pin className="w-3.5 h-3.5" />
                                 </div>
                               )}
+                              <div className="h-48 overflow-hidden relative rounded-[16px]">
+                                <CourseThumbnail 
+                                  title={course.title} 
+                                  audience={course.audience} 
+                                  status={course.status}
+                                  category={course.category}
+                                  backgroundImage={!course.useDynamicThumbnail ? course.thumbnail : undefined}
+                                  className="h-full"
+                                />
+                                {scores && (scores.hasGradableItems || scores.score > 0) && (
+                                  <div className="absolute top-3 left-3 z-25">
+                                    <CircularProgressGauge score={scores.score} isMasked={scores.hasPendingOrUnpublished} />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10">
+                                  <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
+                                    <PlayCircle className="w-5 h-5" /> {progressVal > 0 ? 'Continue' : 'Start Course'}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="p-5 flex flex-col flex-1">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2 text-xs font-bold text-guesty-forest/60 uppercase tracking-widest">
+                                    <BookOpen className="w-4 h-4" /> {course.format}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-xs font-bold text-guesty-forest/60">
+                                    <Clock className="w-3 h-3" /> {course.duration}
+                                  </div>
+                                </div>
+                                <h3 className="text-xl font-bold text-guesty-black leading-tight mb-2 group-hover:text-guesty-nature transition-colors">
+                                  {course.title}
+                                </h3>
+                                <p className="text-sm text-guesty-forest/70 line-clamp-2 mb-4">{course.description}</p>
+                                
+                                <div className="mt-auto pt-4 flex items-center justify-between border-t border-guesty-beige/50 relative">
+                                  <span className="text-xs font-bold text-guesty-forest/50 bg-guesty-ice px-2 py-1 rounded-md">{course.difficulty}</span>
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => setSelectedCatalogCourse(course)} className={`text-sm font-bold ${progressVal > 0 ? 'text-guesty-nature' : theme.textPrimary} hover:opacity-80 transition-opacity flex items-center gap-1.5`}>
+                                      {progressVal > 0 ? 'Continue Learning' : 'Start Course'} <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                    <div className="relative">
+                                      <button onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === `course-${course.id}` ? null : `course-${course.id}`); }} className="p-1.5 text-guesty-forest/60 hover:text-guesty-black rounded-full hover:bg-guesty-beige transition-colors">
+                                        <MoreVertical className="w-4 h-4" />
+                                      </button>
+                                      {openDropdownId === `course-${course.id}` && (
+                                        <div className="absolute bottom-full right-0 mb-2 w-56 bg-white rounded-[12px] shadow-lg border border-guesty-beige py-2 z-50">
+                                          <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
+                                            <Info className="w-4 h-4" /> View Details
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="mt-3.5 pt-3 border-t border-guesty-beige/30">
+                                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider mb-1">
+                                    <span className={progressVal === 100 ? "text-guesty-nature" : "text-guesty-forest/60"}>
+                                      {progressVal === 100 ? "Completed" : progressVal > 0 ? "In Progress" : "Not Started"}
+                                    </span>
+                                    <span className={progressVal === 100 ? "text-guesty-nature" : theme.journeyAccent}>
+                                      {progressVal}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-guesty-beige rounded-full overflow-hidden relative">
+                                    <div 
+                                      className={`h-full rounded-full transition-all duration-500 ${
+                                        progressVal === 100 ? 'bg-guesty-nature' : theme.journeyProgress
+                                      }`} 
+                                      style={{ width: `${progressVal}%` }}
+                                    >
+                                      {progressVal > 0 && progressVal < 100 && (
+                                        <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -4725,70 +5078,92 @@ export default function App() {
                       if (catalogFormat !== 'All Formats' && c.format !== catalogFormat) return false;
                       if (catalogDifficulty !== 'All Levels' && c.difficulty !== catalogDifficulty) return false;
                       return true;
-                    }).map((course) => (
-                      <div key={course.id} className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col p-2">
-                        <div className="h-48 overflow-hidden relative rounded-[16px]">
-                          <CourseThumbnail 
-                            title={course.title} 
-                            audience={course.audience} 
-                            status={course.status}
-                            category={course.category}
-                            backgroundImage={!course.useDynamicThumbnail ? course.thumbnail : undefined}
-                            className="h-full"
-                          />
-                          <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                            <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
-                              <PlayCircle className="w-5 h-5" /> {course.progress && course.progress > 0 ? 'Continue' : 'Start Course'}
-                            </button>
-                          </div>
-                        </div>
-                        <div className="p-5 flex flex-col flex-1">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2 text-xs font-bold text-guesty-forest/60 uppercase tracking-widest">
-                              <BookOpen className="w-4 h-4" /> {course.format}
-                            </div>
-                            <div className="flex items-center gap-1 text-xs font-bold text-guesty-forest/60">
-                              <Clock className="w-3 h-3" /> {course.duration}
-                            </div>
-                          </div>
-                          <h3 className="text-xl font-bold text-guesty-black leading-tight mb-2 group-hover:text-guesty-nature transition-colors">
-                            {course.title}
-                          </h3>
-                          <p className="text-sm text-guesty-forest/70 line-clamp-2 mb-4">{course.description}</p>
-                          
-                          <div className="mt-auto pt-4 flex items-center justify-between border-t border-guesty-beige/50 relative">
-                            <span className="text-xs font-bold text-guesty-forest/50 bg-guesty-ice px-2 py-1 rounded-md">{course.difficulty}</span>
-                            <div className="flex items-center gap-2">
-                              <button onClick={() => setSelectedCatalogCourse(course)} className={`text-sm font-bold ${course.progress && course.progress > 0 ? 'text-guesty-nature' : theme.textPrimary} hover:opacity-80 transition-opacity flex items-center gap-1.5`}>
-                                {course.progress && course.progress > 0 ? 'Continue Learning' : 'Start Course'} <ChevronRight className="w-4 h-4" />
+                    }).map((course) => {
+                      const scores = calculateCourseScores(course.id);
+                      const progressVal = course.progress !== undefined ? course.progress : 0;
+                      return (
+                        <div key={course.id} className="bg-white rounded-[24px] border border-guesty-beige shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col p-2">
+                          <div className="h-48 overflow-hidden relative rounded-[16px]">
+                            <CourseThumbnail 
+                              title={course.title} 
+                              audience={course.audience} 
+                              status={course.status}
+                              category={course.category}
+                              backgroundImage={!course.useDynamicThumbnail ? course.thumbnail : undefined}
+                              className="h-full"
+                            />
+                            {scores && (scores.hasGradableItems || scores.score > 0) && (
+                              <div className="absolute top-3 left-3 z-25">
+                                <CircularProgressGauge score={scores.score} isMasked={scores.hasPendingOrUnpublished} />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-guesty-night/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10">
+                              <button onClick={() => setSelectedCatalogCourse(course)} className="bg-white text-guesty-black font-bold py-3 px-6 rounded-full shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-2">
+                                <PlayCircle className="w-5 h-5" /> {progressVal > 0 ? 'Continue' : 'Start Course'}
                               </button>
-                              <div className="relative">
-                                <button onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === `course-${course.id}` ? null : `course-${course.id}`); }} className="p-1.5 text-guesty-forest/60 hover:text-guesty-black rounded-full hover:bg-guesty-beige transition-colors">
-                                  <MoreVertical className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="p-5 flex flex-col flex-1">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2 text-xs font-bold text-guesty-forest/60 uppercase tracking-widest">
+                                <BookOpen className="w-4 h-4" /> {course.format}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs font-bold text-guesty-forest/60">
+                                <Clock className="w-3 h-3" /> {course.duration}
+                              </div>
+                            </div>
+                            <h3 className="text-xl font-bold text-guesty-black leading-tight mb-2 group-hover:text-guesty-nature transition-colors">
+                              {course.title}
+                            </h3>
+                            <p className="text-sm text-guesty-forest/70 line-clamp-2 mb-4">{course.description}</p>
+                            
+                            <div className="mt-auto pt-4 flex items-center justify-between border-t border-guesty-beige/50 relative">
+                              <span className="text-xs font-bold text-guesty-forest/50 bg-guesty-ice px-2 py-1 rounded-md">{course.difficulty}</span>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => setSelectedCatalogCourse(course)} className={`text-sm font-bold ${progressVal > 0 ? 'text-guesty-nature' : theme.textPrimary} hover:opacity-80 transition-opacity flex items-center gap-1.5`}>
+                                  {progressVal > 0 ? 'Continue Learning' : 'Start Course'} <ChevronRight className="w-4 h-4" />
                                 </button>
-                                {openDropdownId === `course-${course.id}` && (
-                                  <div className="absolute bottom-full right-0 mb-2 w-56 bg-white rounded-[12px] shadow-lg border border-guesty-beige py-2 z-50">
-                                    <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
-                                      <Info className="w-4 h-4" /> View Details
-                                    </button>
-                                  </div>
-                                )}
+                                <div className="relative">
+                                  <button onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === `course-${course.id}` ? null : `course-${course.id}`); }} className="p-1.5 text-guesty-forest/60 hover:text-guesty-black rounded-full hover:bg-guesty-beige transition-colors">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+                                  {openDropdownId === `course-${course.id}` && (
+                                    <div className="absolute bottom-full right-0 mb-2 w-56 bg-white rounded-[12px] shadow-lg border border-guesty-beige py-2 z-50">
+                                      <button onClick={() => { setSelectedCatalogCourse(course); setOpenDropdownId(null); }} className="w-full px-4 py-2 text-sm font-bold text-guesty-black hover:bg-guesty-cream flex items-center gap-2 transition-colors">
+                                        <Info className="w-4 h-4" /> View Details
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-3.5 pt-3 border-t border-guesty-beige/30">
+                              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider mb-1">
+                                <span className={progressVal === 100 ? "text-guesty-nature" : "text-guesty-forest/60"}>
+                                  {progressVal === 100 ? "Completed" : progressVal > 0 ? "In Progress" : "Not Started"}
+                                </span>
+                                <span className={progressVal === 100 ? "text-guesty-nature" : theme.journeyAccent}>
+                                  {progressVal}%
+                                </span>
+                              </div>
+                              <div className="w-full h-1.5 bg-guesty-beige rounded-full overflow-hidden relative">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    progressVal === 100 ? 'bg-guesty-nature' : theme.journeyProgress
+                                  }`} 
+                                  style={{ width: `${progressVal}%` }}
+                                >
+                                  {progressVal > 0 && progressVal < 100 && (
+                                    <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                          {course.progress !== undefined && course.progress > 0 && (
-                            <div className="mt-3">
-                              <div className="flex justify-between text-[10px] font-bold mb-1">
-                                <span className="text-guesty-nature">{course.progress}% Completed</span>
-                              </div>
-                              <div className="w-full h-1.5 bg-guesty-beige rounded-full overflow-hidden">
-                                <div className="h-full bg-guesty-nature rounded-full" style={{ width: `${course.progress}%` }}></div>
-                              </div>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
@@ -4815,6 +5190,39 @@ export default function App() {
                       <div className="h-full bg-guesty-nature rounded-full" style={{ width: `${selectedCatalogCourse.progress || 0}%` }}></div>
                     </div>
                   </div>
+
+                  {/* Global Course Grade Progression Tracker */}
+                  {(() => {
+                    const scores = calculateCourseScores(selectedCatalogCourse.id);
+                    if (scores && scores.hasGradableItems) {
+                      return (
+                        <div className="mt-4 p-4 rounded-2xl bg-white border border-guesty-beige shadow-sm flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] font-black text-guesty-forest/40 uppercase tracking-widest block">
+                              Global Course Mean
+                            </span>
+                            <span className="text-sm font-bold text-guesty-black mt-0.5 block">
+                              Grade Progression
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            {scores.hasPendingOrUnpublished ? (
+                              <div className="flex flex-col items-end">
+                                <span className="text-lg font-black text-orange-600">Masked</span>
+                                <span className="text-[9px] font-bold text-orange-500 uppercase tracking-wider">Pending Evaluation</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-end">
+                                <span className="text-2xl font-black text-guesty-nature">{scores.score}/100</span>
+                                <span className="text-[9px] font-bold text-guesty-nature/70 uppercase tracking-widest">Weighted Mean</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -4849,6 +5257,37 @@ export default function App() {
                             {type === 'Video' ? <Video className="w-3 h-3"/> : <Package className="w-3 h-3"/>} {type}
                           </p>
                         </div>
+                        {(() => {
+                          const scoreInfo = getModuleScoreInfo(selectedCatalogCourse, isObject ? modId : { id: modId, type: 'Video' }, index);
+                          if (!scoreInfo) return null;
+
+                          if (scoreInfo.isMasked) {
+                            return (
+                              <div className="flex items-center shrink-0 self-center">
+                                <span className="text-[10px] font-black text-orange-600 bg-orange-100 border border-orange-200 uppercase tracking-widest px-2.5 py-1.5 rounded-xl cursor-help animate-pulse" title="Grade is hidden until instructor publishes feedback." onClick={(e) => { e.stopPropagation(); }}>
+                                  Masked
+                                </span>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFeedbackSelectedAttempt(scoreInfo.attempt);
+                                setFeedbackSelectedAssessment(scoreInfo.assessment);
+                                setShowLearnerFeedbackModal(true);
+                              }}
+                              className="flex items-center shrink-0 self-center bg-guesty-nature hover:bg-opacity-90 active:scale-95 text-white text-xs font-black px-3 py-1.5 rounded-full border border-guesty-nature/20 transition-all shadow-sm gap-1 cursor-pointer"
+                              title="Click to view detailed feedback & results breakdown"
+                            >
+                              <span>Score: {scoreInfo.score}/{scoreInfo.max_score}</span>
+                              <ExternalLink className="w-3 h-3 text-white" />
+                            </button>
+                          );
+                        })()}
                       </div>
                     );
                   }) : (
@@ -4930,7 +5369,7 @@ export default function App() {
                                 <div className="h-8 w-px bg-white/10" />
                                 <div className="flex flex-col items-center">
                                   <p className={`text-2xl font-black ${learnerAttempt.passed ? "text-guesty-nature" : "text-guesty-coral"}`}>
-                                    {learnerAttempt.percentage}%
+                                    {learnerAttempt.score}/{learnerAttempt.max_score}
                                   </p>
                                   <span className={`text-[8px] font-black uppercase tracking-widest ${learnerAttempt.passed ? "text-guesty-nature" : "text-guesty-coral"}`}>
                                     {learnerAttempt.passed ? "PASSED" : "FAILED / NEEDS STUDY"}
@@ -8885,6 +9324,271 @@ export default function App() {
                  // Optional: mark module as completed in course
                }}
              />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Learner Detailed Feedback Modal */}
+      <AnimatePresence>
+        {showLearnerFeedbackModal && feedbackSelectedAttempt && feedbackSelectedAssessment && (
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-4xl h-full max-h-[85vh] flex flex-col bg-white rounded-[32px] shadow-2xl overflow-hidden border border-guesty-beige"
+            >
+              {/* Modal Header */}
+              <div className="p-6 md:p-8 bg-guesty-cream/30 border-b border-guesty-beige flex items-center justify-between shrink-0">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-guesty-ocean tracking-widest block mb-1">
+                    Detailed Results Summary
+                  </span>
+                  <h3 className="text-2xl font-serif italic text-guesty-black">
+                    {feedbackSelectedAssessment.title}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-4">
+                  {/* Total score summary badges */}
+                  <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-2xl border border-guesty-beige shadow-sm">
+                    <div className="text-right">
+                      <p className="text-[9px] font-black text-guesty-forest/60 uppercase tracking-widest leading-none">Points Awarded</p>
+                      <p className="text-sm font-black text-guesty-black mt-1">
+                        {feedbackSelectedAttempt.score} / {feedbackSelectedAttempt.max_score}
+                      </p>
+                    </div>
+                    <div className="h-6 w-px bg-guesty-beige" />
+                    <div className="flex flex-col items-center">
+                      <span className={`text-xl font-black ${feedbackSelectedAttempt.passed ? "text-guesty-nature" : "text-guesty-coral"}`}>
+                        {feedbackSelectedAttempt.percentage}%
+                      </span>
+                      <span className={`text-[8px] font-black tracking-widest ${feedbackSelectedAttempt.passed ? "text-guesty-nature" : "text-guesty-coral"}`}>
+                        {feedbackSelectedAttempt.passed ? "PASSED" : "FAILED"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setShowLearnerFeedbackModal(false);
+                      setFeedbackSelectedAttempt(null);
+                      setFeedbackSelectedAssessment(null);
+                    }}
+                    className="p-2.5 hover:bg-white rounded-xl border border-guesty-beige transition-all text-guesty-forest/60 hover:text-guesty-black shadow-sm"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Core Area */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar bg-slate-50/55">
+                {/* 1. Instructor Qualitative Comments block */}
+                {(() => {
+                  const openEndedGrades = Object.values(feedbackSelectedAttempt.manual_grades || {});
+                  const generalFeedbackList = openEndedGrades.map((g: any) => g.feedback).filter(Boolean);
+
+                  return (
+                    <div className="bg-white p-6 rounded-[24px] border border-guesty-nature/20 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-guesty-nature"></div>
+                      <div className="flex items-center gap-2 text-guesty-nature mb-3">
+                        <Award className="w-5 h-5" />
+                        <h4 className="text-sm font-black uppercase tracking-wider">Instructor Assessment Comments</h4>
+                      </div>
+                      
+                      {generalFeedbackList.length > 0 ? (
+                        <div className="space-y-4">
+                          {generalFeedbackList.map((feedbackText, f_idx) => (
+                            <p key={`fb-${f_idx}`} className="text-sm font-medium italic text-guesty-black leading-relaxed font-serif bg-guesty-cream/25 p-4 rounded-xl border border-guesty-beige/50">
+                              "{feedbackText}"
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm font-medium italic text-guesty-forest/60 leading-relaxed font-serif">
+                          "Excellent job completing this learning checkpoint. Your solid grasp of the concepts demonstrates strong focus and preparation!"
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* 2. Completed Questions review with side-by-side responses and correct choices */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-black text-guesty-forest/50 uppercase tracking-[0.15em] pb-1 border-b border-guesty-beige">
+                    Itemized Responses Audit Breakdown
+                  </h4>
+
+                  <div className="space-y-4">
+                    {feedbackSelectedAssessment.questions?.map((question: any, qIdx: number) => {
+                      const userResponse = feedbackSelectedAttempt.responses?.[question.id];
+                      const hasManualGrade = feedbackSelectedAttempt.manual_grades?.[question.id];
+                      
+                      let pointsEarned = 0;
+                      if (question.type === 'open_ended') {
+                        pointsEarned = hasManualGrade?.score ?? 0;
+                      } else if (question.type === 'single_choice' || question.type === 'likert_scale') {
+                        const correctAns = question.answers?.find((a: any) => a.is_correct);
+                        pointsEarned = userResponse === correctAns?.id ? question.points : 0;
+                      } else if (question.type === 'multiple_choice') {
+                        const ansList = (userResponse as string[]) || [];
+                        const correctAnswers = question.answers?.filter((a: any) => a.is_correct).map((a: any) => a.id) || [];
+                        const allCorrect = correctAnswers.every((id: string) => ansList.includes(id)) && ansList.every((id: string) => correctAnswers.includes(id));
+                        pointsEarned = allCorrect ? question.points : 0;
+                      }
+                      
+                      const pointsEarnedNormalized = question.points > 0 ? Math.round((pointsEarned / question.points) * 100) : 0;
+                      const isCorrect = pointsEarned === question.points;
+
+                      return (
+                        <div key={question.id} className="bg-white p-6 rounded-2xl border border-guesty-beige shadow-sm space-y-4">
+                          <div className="flex justify-between items-start gap-3">
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-guesty-cream border border-guesty-beige text-guesty-black rounded flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                                {qIdx + 1}
+                              </div>
+                              <div>
+                                <h5 className="text-sm font-bold text-guesty-black leading-snug">{question.content}</h5>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-guesty-forest/50 mt-1 flex items-center gap-1.5">
+                                  <span>{question.type.replace('_', ' ')}</span>
+                                  <span>•</span>
+                                  <span>Points breakdown: Awarded: {pointsEarned} / {question.points} pts</span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border ${
+                              question.type === 'open_ended' 
+                                ? "bg-guesty-ocean/10 text-guesty-ocean border-guesty-ocean/20"
+                                : isCorrect ? "bg-guesty-nature/10 text-guesty-nature border-guesty-nature/20" : "bg-guesty-coral/10 text-guesty-coral border-guesty-coral/20"
+                            }`}>
+                              {question.type === 'open_ended' ? `Awarded: ${pointsEarned}/${question.points} Qpt` : isCorrect ? "Correct" : "Incorrect"}
+                            </div>
+                          </div>
+
+                          {/* Answers Layout side-by-side or detailed */}
+                          <div className="pl-10 space-y-3">
+                            {question.type !== 'open_ended' ? (
+                              <div className="grid grid-cols-1 gap-2.5">
+                                {question.answers?.map((ans: any) => {
+                                  const isSelected = Array.isArray(userResponse) 
+                                    ? userResponse.includes(ans.id) 
+                                    : userResponse === ans.id;
+
+                                  return (
+                                    <div 
+                                      key={ans.id}
+                                      className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                                        isSelected 
+                                          ? (ans.is_correct ? "bg-guesty-nature/[0.03] border-guesty-nature text-guesty-black" : "bg-guesty-coral/[0.03] border-guesty-coral text-guesty-black")
+                                          : (ans.is_correct ? "bg-guesty-nature/[0.01] border-dashed border-guesty-nature/40 text-guesty-nature" : "bg-white border-guesty-beige opacity-60 text-guesty-forest/80")
+                                      }`}
+                                    >
+                                      <span>{ans.content}</span>
+                                      {isSelected && (
+                                        <span className={`text-[8px] font-black uppercase tracking-widest inline-flex px-1.5 py-0.5 rounded ${ans.is_correct ? 'bg-guesty-nature text-white' : 'bg-guesty-coral text-white'}`}>
+                                          {ans.is_correct ? "Your Choice" : "Your Chosen Answer"}
+                                        </span>
+                                      )}
+                                      {!isSelected && ans.is_correct && (
+                                        <span className="text-[8px] font-black uppercase tracking-widest bg-guesty-nature/10 text-guesty-nature px-1.5 py-0.5 rounded">
+                                          Correct Choice
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              // Detailed Open-Ended side-by-side Response
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-guesty-cream/30 p-4 border border-guesty-beige rounded-xl flex flex-col justify-between">
+                                  <div>
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-guesty-forest/50 block mb-2">My Submitted Response:</span>
+                                    <p className="text-xs text-guesty-black font-medium leading-relaxed italic whitespace-pre-wrap">
+                                      "{(typeof userResponse === 'object' && userResponse !== null && !Array.isArray(userResponse)) ? (userResponse as any).text : (userResponse || 'No responses cataloged.')}"
+                                    </p>
+                                  </div>
+                                  
+                                  {/* Render attachments */}
+                                  {typeof userResponse === 'object' && userResponse !== null && !Array.isArray(userResponse) && (userResponse as any).files && (userResponse as any).files.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-guesty-beige/40 flex gap-1.5">
+                                      {(userResponse as any).files.map((fileUrl: string, idx: number) => (
+                                        <img 
+                                          key={idx} 
+                                          src={fileUrl} 
+                                          referrerPolicy="no-referrer"
+                                          className="w-12 h-12 rounded object-cover border border-guesty-beige" 
+                                          alt="Learner Attachment Uploaded" 
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="bg-guesty-ocean/5 p-4 border border-guesty-ocean/10 rounded-xl flex flex-col justify-between">
+                                  <div>
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-guesty-ocean block mb-2">Instructor Written Guidance & Comments:</span>
+                                    <p className="text-xs text-guesty-black font-semibold leading-relaxed">
+                                      {hasManualGrade?.feedback ? `"${hasManualGrade.feedback}"` : `"Outstanding answer. Your response demonstrates structured thinking and deep knowledge of this area."`}
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="mt-4 pt-3 border-t border-guesty-ocean/10 text-right">
+                                    <span className="text-[10px] font-black uppercase text-guesty-ocean">
+                                      Category Grading: {hasManualGrade?.score ?? question.points} / {question.points} Points Awarded
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Option level/Question level feedback */}
+                            {question.type !== 'open_ended' && (
+                              <div className="p-3 bg-guesty-cream/20 border border-guesty-beige/60 rounded-xl space-y-1 text-xs">
+                                {isCorrect && question.correct_feedback && (
+                                  <p className="text-guesty-nature font-medium flex items-start gap-1.5">
+                                    <span>•</span>
+                                    <span>{question.correct_feedback}</span>
+                                  </p>
+                                )}
+                                {!isCorrect && question.incorrect_feedback && (
+                                  <p className="text-guesty-coral font-medium flex items-start gap-1.5">
+                                    <span>•</span>
+                                    <span>{question.incorrect_feedback}</span>
+                                  </p>
+                                )}
+                                {question.answers?.map((ans: any) => ans.feedback && (Array.isArray(userResponse) ? userResponse.includes(ans.id) : userResponse === ans.id) && (
+                                  <p key={ans.id} className="text-guesty-forest flex items-start gap-1.5">
+                                    <span className="text-guesty-forest/40 font-black">Item note:</span>
+                                    <span>{ans.feedback}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 bg-guesty-cream/20 border-t border-guesty-beige flex justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLearnerFeedbackModal(false);
+                    setFeedbackSelectedAttempt(null);
+                    setFeedbackSelectedAssessment(null);
+                  }}
+                  className="px-6 py-3 bg-guesty-black hover:bg-opacity-90 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all"
+                >
+                  Close Feedback Window
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

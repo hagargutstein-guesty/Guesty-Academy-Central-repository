@@ -98,6 +98,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
       totalExams,
       totalSubmissions,
       pendingManualCount,
+      gradedCount,
       publishedPercentage
     };
   }, [assessments, attempts]);
@@ -405,8 +406,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                   </div>
                 </div>
                 <div className="mt-4">
-                  <h3 className="text-3xl font-black text-green-700">{dashboardStats.publishedPercentage}%</h3>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Results published downstream</p>
+                  <h3 className="text-3xl font-black text-green-700">{dashboardStats.gradedCount} / {dashboardStats.totalSubmissions}</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1">Evaluated submissions</p>
                 </div>
               </div>
             </div>
@@ -420,7 +421,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                 </div>
 
                 {/* Type-Based Navigation Segment Control Toggle */}
-                <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-150 max-w-md w-full md:w-auto">
+                <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-150 max-w-xl w-full md:w-auto">
                   <button
                     type="button"
                     onClick={() => setEntityTypeFilter('all')}
@@ -443,7 +444,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                         : "text-gray-400 hover:text-gray-700"
                     )}
                   >
-                    Assessments ({assessments.filter(a => a.assessmentData?.subType === 'Quiz').length})
+                    Assessments (Graded) ({assessments.filter(a => a.assessmentData?.subType === 'Quiz').length})
                   </button>
                   <button
                     type="button"
@@ -455,7 +456,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                         : "text-gray-400 hover:text-[#FF9D00]"
                     )}
                   >
-                    Surveys ({assessments.filter(a => a.assessmentData?.subType === 'Survey').length})
+                    Surveys (Non-graded) ({assessments.filter(a => a.assessmentData?.subType === 'Survey').length})
                   </button>
                 </div>
               </div>
@@ -567,22 +568,8 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                               ? "bg-amber-100 text-amber-700 border border-amber-200" 
                               : "bg-guesty-ice text-guesty-nature border border-guesty-nature/10"
                           )}>
-                            {data.subType || 'Quiz'}
+                            {data.subType === 'Survey' ? 'Survey (Non-graded)' : 'Assessment (Graded)'}
                           </span>
-                          
-                          {mappedCourses.length > 0 ? (
-                            <span 
-                              className="text-[10px] font-bold text-gray-405 truncate max-w-[180px] flex items-center gap-1.5 hover:text-guesty-nature"
-                              title={mappedCourses.map(c => c.title).join(", ")}
-                            >
-                              <BookOpen className="w-3.5 h-3.5" />
-                              Active in: {mappedCourses.map(c => c.title).join(", ")}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-gray-400 italic">
-                              Unmapped
-                            </span>
-                          )}
                         </div>
 
                         {/* Title & metadata */}
@@ -592,6 +579,31 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                         <p className="text-xs text-gray-500 line-clamp-2 mt-2 font-medium">
                           {data.description || "Interactive evaluation for Course roster."}
                         </p>
+
+                        {/* Explicit Connected Courses List */}
+                        <div className="mt-3.5 space-y-1.5">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
+                            <BookOpen className="w-3.5 h-3.5 text-guesty-nature shrink-0" />
+                            <span>Connected Courses ({mappedCourses.length})</span>
+                          </div>
+                          {mappedCourses.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pr-1">
+                              {mappedCourses.map(c => (
+                                <span 
+                                  key={c.id} 
+                                  className="inline-flex bg-guesty-cream/50 border border-guesty-beige text-guesty-black text-[9px] font-black px-2 py-0.5 rounded-md truncate max-w-[150px]"
+                                  title={c.title}
+                                >
+                                  {c.title}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="inline-flex bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-black px-2 py-0.5 rounded-md italic">
+                              Not connected to any course
+                            </span>
+                          )}
+                        </div>
 
                         {/* Current grading workload */}
                         <div className="mt-5 space-y-2.5 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
